@@ -346,6 +346,9 @@ static void GlobalInitializeOrDieImpl() {
 #ifdef BAIDU_INTERNAL
     NamingServiceExtension()->RegisterOrDie("bns", &g_ext->bns);
 #endif
+    // 命名扩展
+    // 命名服务把一个名字映射为可修改的机器列表，
+    // int GetServers(const char *service_name, std::vector<ServerNode>* servers);
     NamingServiceExtension()->RegisterOrDie("file", &g_ext->fns);
     NamingServiceExtension()->RegisterOrDie("list", &g_ext->lns);
     NamingServiceExtension()->RegisterOrDie("http", &g_ext->dns);
@@ -355,6 +358,7 @@ static void GlobalInitializeOrDieImpl() {
     NamingServiceExtension()->RegisterOrDie("consul", &g_ext->cns);
     NamingServiceExtension()->RegisterOrDie("discovery", &g_ext->dcns);
 
+    //负载均衡扩展
     // Load Balancers
     LoadBalancerExtension()->RegisterOrDie("rr", &g_ext->rr_lb);
     LoadBalancerExtension()->RegisterOrDie("wrr", &g_ext->wrr_lb);
@@ -365,6 +369,7 @@ static void GlobalInitializeOrDieImpl() {
     LoadBalancerExtension()->RegisterOrDie("c_ketama", &g_ext->ch_ketama_lb);
     LoadBalancerExtension()->RegisterOrDie("_dynpart", &g_ext->dynpart_lb);
 
+    // 注册压缩handler
     // Compress Handlers
     const CompressHandler gzip_compress =
         { GzipCompress, GzipDecompress, "gzip" };
@@ -382,6 +387,27 @@ static void GlobalInitializeOrDieImpl() {
         exit(1);
     }
 
+
+    // 注册协议
+    // parse 用于把消息从source上切割下来，client端和server端使用同一个parse函数。返回的消息会被递给process_request(server端)或process_response(client端)。
+
+    // serialize_request 把request序列化进request_buf，client端必须实现。发生在pack_request之前，一次RPC中只会调用一次。cntl包含某些协议（比如http）需要的信息。成功返回true，否则false。
+
+    // pack_request 把request_buf打包入msg，每次向server发送消息前（包括重试）都会调用。当auth不为空时，需要打包认证信息。成功返回0，否则-1。
+
+    // process_request 处理server端parse返回的消息，server端必须实现。可能会在和parse()不同的线程中运行。多个process_request可能同时运行。在r34386后必须在处理结束时调用msg_base->Destroy()，为了防止漏调，考虑使用DestroyingPtr<>。
+
+    // process_response 处理client端parse返回的消息，client端必须实现。可能会在和parse()不同的线程中运行。多个process_response可能同时运行。在r34386后必须在处理结束时调用msg_base->Destroy()，为了防止漏调，考虑使用DestroyingPtr<>。
+
+    // verify 处理连接的认证，只会对连接上的第一个消息调用，需要支持认证的server端必须实现，不需要认证或仅支持client端的协议可填NULL。成功返回true，否则false。
+
+    // parse_server_address 把server_addr_and_port(Channel.Init的一个参数)转化为butil::EndPoint，可选。一些协议对server地址的表达和理解可能是不同的。
+
+    // get_method_name
+
+    // supported_connection_type
+
+    // name
     // Protocols
     Protocol baidu_protocol = { ParseRpcMessage,
                                 SerializeRequestDefault, PackRpcRequest,
@@ -590,6 +616,7 @@ static void GlobalInitializeOrDieImpl() {
         }
     }
 
+    // 自适应限流 方法
     // Concurrency Limiters
     ConcurrencyLimiterExtension()->RegisterOrDie("auto", &g_ext->auto_cl);
     ConcurrencyLimiterExtension()->RegisterOrDie("constant", &g_ext->constant_cl);
@@ -608,6 +635,7 @@ static void GlobalInitializeOrDieImpl() {
         << "Fail to start GlobalUpdate";
 }
 
+// 使用pthread_once保证只执行一次
 void GlobalInitializeOrDie() {
     if (pthread_once(&register_extensions_once,
                      GlobalInitializeOrDieImpl) != 0) {

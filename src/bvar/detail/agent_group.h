@@ -79,6 +79,8 @@ public:
     // makes alignment of ThreadBlock harder and to address the agent we have
     // to touch an additional cacheline: the bitmap. Whereas in the first
     // method, bitmap and ThreadBlock* are in one cacheline.
+
+    // 一个 ThreadBlock 保存一个 ELEMENTS_PER_BLOCK 个Agent
     struct BAIDU_CACHELINE_ALIGNMENT ThreadBlock {
         inline Agent* at(size_t offset) { return _agents + offset; };
         
@@ -105,6 +107,7 @@ public:
             errno = EINVAL;
             return -1;
         }
+        // 保存未使用ID
         _get_free_ids().push_back(id);
         return 0;
     }
@@ -114,10 +117,14 @@ public:
     inline static Agent* get_tls_agent(AgentId id) {
         if (__builtin_expect(id >= 0, 1)) {
             if (_s_tls_blocks) {
+                // 获得thread ID
                 const size_t block_id = (size_t)id / ELEMENTS_PER_BLOCK;
+
                 if (block_id < _s_tls_blocks->size()) {
+                    // 返回当前线程块 一个Block可能包含多个Agent
                     ThreadBlock* const tb = (*_s_tls_blocks)[block_id];
                     if (tb) {
+                        // 计算在当前 ThreadID块中的偏移地址
                         return tb->at(id - block_id * ELEMENTS_PER_BLOCK);
                     }
                 }
@@ -133,6 +140,7 @@ public:
             return NULL;
         }
         if (_s_tls_blocks == NULL) {
+            // 新建vector<ThreadBlock>
             _s_tls_blocks = new (std::nothrow) std::vector<ThreadBlock *>;
             if (__builtin_expect(_s_tls_blocks == NULL, 0)) {
                 LOG(FATAL) << "Fail to create vector, " << berror();
@@ -140,13 +148,17 @@ public:
             }
             butil::thread_atexit(_destroy_tls_blocks);
         }
+        // 计算当前ID所在的 ThreadBlock 块位置
         const size_t block_id = (size_t)id / ELEMENTS_PER_BLOCK; 
+
+        // 如果新的线程中没有对应值则申请，然后调整到合适大小
         if (block_id >= _s_tls_blocks->size()) {
             // The 32ul avoid pointless small resizes.
             _s_tls_blocks->resize(std::max(block_id + 1, 32ul));
         }
         ThreadBlock* tb = (*_s_tls_blocks)[block_id];
         if (tb == NULL) {
+            // 新建ThreadBlock，ThreadBlock中包含对应数目的agent
             ThreadBlock *new_block = new (std::nothrow) ThreadBlock;
             if (__builtin_expect(new_block == NULL, 0)) {
                 return NULL;
@@ -154,6 +166,7 @@ public:
             tb = new_block;
             (*_s_tls_blocks)[block_id] = new_block;
         }
+        // 返回Agent
         return tb->at(id - block_id * ELEMENTS_PER_BLOCK);
     }
 
@@ -170,7 +183,11 @@ private:
     }
 
     inline static std::deque<AgentId> &_get_free_ids() {
+        // #define likely(x) __builtin_expect(!!(x), 1) //x很可能为真       
+        // #define unlikely(x) __builtin_expect(!!(x), 0) //x很可能为假
+        // 表示_s_free_ids 为空的可能性很大
         if (__builtin_expect(!_s_free_ids, 0)) {
+            // 新建AgentID 的deque
             _s_free_ids = new (std::nothrow) std::deque<AgentId>();
             if (!_s_free_ids) {
                 abort();
@@ -179,9 +196,15 @@ private:
         return *_s_free_ids;
     }
 
+    // 新建和销毁 agent使用
     static pthread_mutex_t                      _s_mutex;
+
+    // 全局静态AgentID 依次递增 
+    // 静态变量，在模版类中，相同的T 中使用的同一个静态变量。因此在这里，相同的Agent会使用的同一个 AgentID
+    // std::deque<AgentId>、std::vector<ThreadBlock *>
     static AgentId                              _s_agent_kinds;
     static std::deque<AgentId>                  *_s_free_ids;
+    // 各线程一个 thread_local C++11与__thread gcc 的区别
     static __thread std::vector<ThreadBlock *>  *_s_tls_blocks;
 };
 

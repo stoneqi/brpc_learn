@@ -57,6 +57,7 @@ public:
                        << " which must be power of 2";
             return -1;
         }
+        // 新建Buffer
         _buffer = new(std::nothrow) T[capacity];
         if (NULL == _buffer) {
             return -1;
@@ -115,6 +116,7 @@ public:
     // Returns true on stolen.
     // May run in parallel with push() pop() or another steal().
     bool steal(T* val) {
+        // 获取当前top和 bottom
         size_t t = _top.load(butil::memory_order_acquire);
         size_t b = _bottom.load(butil::memory_order_acquire);
         if (t >= b) {
@@ -122,12 +124,18 @@ public:
             return false;
         }
         do {
+            //
             butil::atomic_thread_fence(butil::memory_order_seq_cst);
+            // 获取当前bottom
             b = _bottom.load(butil::memory_order_acquire);
+            // 判断是否为空
             if (t >= b) {
                 return false;
             }
+            // 获取当前值
             *val = _buffer[t & (_capacity - 1)];
+        // 判断是否写入成功
+        // 当前值与期望值(expect)不等时，将期望值(expect)修改为当前值，返回false
         } while (!_top.compare_exchange_strong(t, t + 1,
                                                butil::memory_order_seq_cst,
                                                butil::memory_order_relaxed));

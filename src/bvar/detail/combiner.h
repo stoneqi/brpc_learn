@@ -160,6 +160,7 @@ public:
     typedef AgentCombiner<ResultTp, ElementTp, BinaryOp> self_type;
 friend class GlobalValue<self_type>;
     
+    // 奇异递归模板模式(Curiously Recurring Template Pattern)，简称CRTP
     struct Agent : public butil::LinkNode<Agent> {
         Agent() : combiner(NULL) {}
 
@@ -307,6 +308,7 @@ friend class GlobalValue<self_type>;
         // TODO: Is uniqueness-checking necessary here?
         {
             butil::AutoLock guard(_lock);
+            // 如果为新的线程创建的agent 则，保存到_agents链表中
             _agents.Append(agent);
         }
         return agent;

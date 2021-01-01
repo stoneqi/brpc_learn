@@ -702,6 +702,7 @@ static AdaptiveMaxConcurrency g_default_max_concurrency_of_method(0);
 int Server::StartInternal(const butil::ip_t& ip,
                           const PortRange& port_range,
                           const ServerOptions *opt) {
+    // server的 unique_ptr的智能指针
     std::unique_ptr<Server, RevertServerStatus> revert_server(this);
     if (_failed_to_set_max_concurrency_of_method) {
         _failed_to_set_max_concurrency_of_method = false;
@@ -709,6 +710,7 @@ int Server::StartInternal(const butil::ip_t& ip,
             "fix it before starting server";
         return -1;
     }
+    // 初始化
     if (InitializeOnce() != 0) {
         LOG(ERROR) << "Fail to initialize Server[" << version() << ']';
         return -1;

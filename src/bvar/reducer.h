@@ -65,6 +65,7 @@ namespace bvar {
 // my_type_sum << MyType(1) << MyType(2) << MyType(3);
 // LOG(INFO) << my_type_sum;  // "MyType{6}"
 
+// 二元操作符 ，T代表类型， OP为操作。多个T e1 Op e2 Op e3
 template <typename T, typename Op, typename InvOp = detail::VoidOp>
 class Reducer : public Variable {
 public:
