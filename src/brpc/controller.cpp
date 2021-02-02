@@ -992,7 +992,11 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
 
     // Intercept IssueRPC when _sender is set. Currently _sender is only set
     // by SelectiveChannel.
+    // _sender已经被初始化过
+
+    // sender 为 RPCSender 
     if (_sender) {
+        // 直接发送请求
         if (_sender->IssueRPC(start_realtime_us) != 0) {
             return HandleSendFailed();
         }
@@ -1003,10 +1007,13 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
     // Pick a target server for sending RPC
     _current_call.need_feedback = false;
     _current_call.enable_circuit_breaker = has_enabled_circuit_breaker();
+
+    // 申明临时的SocketUniquePtr
     SocketUniquePtr tmp_sock;
     if (SingleServer()) {
         // Don't use _current_call.peer_id which is set to -1 after construction
         // of the backup call.
+        // 
         const int rc = Socket::Address(_single_server_id, &tmp_sock);
         if (rc != 0 || (!is_health_check_call() && !tmp_sock->IsAvailable())) {
             SetFailed(EHOSTDOWN, "Not connected to %s yet, server_id=%" PRIu64,
@@ -1016,6 +1023,8 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
         }
         _current_call.peer_id = _single_server_id;
     } else {
+
+        // 负载均衡
         LoadBalancer::SelectIn sel_in =
             { start_realtime_us, true,
               has_request_code(), _request_code, _accessed };
@@ -1056,6 +1065,8 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
                            endpoint2str(_remote_side).c_str());
         }
     }
+
+    // 选择链接类型
     // Handle connection type
     if (_connection_type == CONNECTION_TYPE_SINGLE ||
         _stream_creator != NULL) { // let user decides the sending_sock
@@ -1070,6 +1081,7 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
         _current_call.sending_sock->set_preferred_index(_preferred_index);
     } else {
         int rc = 0;
+        // 连接持获得一个socket
         if (_connection_type == CONNECTION_TYPE_POOLED) {
             rc = tmp_sock->GetPooledSocket(&_current_call.sending_sock);
         } else if (_connection_type == CONNECTION_TYPE_SHORT) {
@@ -1124,6 +1136,8 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
     // Make request
     butil::IOBuf packet;
     SocketMessage* user_packet = NULL;
+
+    // 打包请求
     _pack_request(&packet, &user_packet, cid.value, _method, this,
                   _request_buf, using_auth);
     // TODO: PackRequest may accept SocketMessagePtr<>?
@@ -1162,6 +1176,7 @@ void Controller::IssueRPC(int64_t start_realtime_us) {
         if (span) {
             packet_size = user_packet_guard->EstimatedByteSize();
         }
+        // 调用socket的write 具体的写入
         rc = _current_call.sending_sock->Write(user_packet_guard, &wopt);
     } else {
         packet_size = packet.size();

@@ -567,7 +567,7 @@ int Socket::ResetFileDescriptor(int fd) {
                         << buff_size;
         }
     }
-
+    // 根据fd 获得 全局的事件分发器
     if (_on_edge_triggered_events) {
         if (GetGlobalEventDispatcher(fd).AddConsumer(id(), fd) != 0) {
             PLOG(ERROR) << "Fail to add SocketId=" << id() 
@@ -649,6 +649,7 @@ int Socket::Create(const SocketOptions& options, SocketId* id) {
     CHECK(NULL == m->_write_head.load(butil::memory_order_relaxed));
     // Must be last one! Internal fields of this Socket may be access
     // just after calling ResetFileDescriptor.
+    // 放入事件发生器中
     if (m->ResetFileDescriptor(options.fd) != 0) {
         const int saved_errno = errno;
         PLOG(ERROR) << "Fail to ResetFileDescriptor";
@@ -656,6 +657,7 @@ int Socket::Create(const SocketOptions& options, SocketId* id) {
                      berror(saved_errno));
         return -1;
     }
+    // 复制ID
     *id = m->_this_id;
     return 0;
 }
@@ -1014,6 +1016,7 @@ void Socket::OnRecycle() {
 void* Socket::ProcessEvent(void* arg) {
     // the enclosed Socket is valid and free to access inside this function.
     SocketUniquePtr s(static_cast<Socket*>(arg));
+    //执行设置的对应函数
     s->_on_edge_triggered_events(s.get());
     return NULL;
 }
@@ -1026,19 +1029,30 @@ void* Socket::ProcessEvent(void* arg) {
 // `old_head' is last new_head got from this function or (in another word)
 // tail of current writing list.
 // `singular_node' is true iff `old_head' is the only node in its list.
+// old_head 为反转链表的尾节点，也即是原来的头节点，所以为old_head
+// new_tail 为 old_head的引用
+
+// singular_node 判断处理节点是否为最后一个
+
 bool Socket::IsWriteComplete(Socket::WriteRequest* old_head,
                              bool singular_node,
                              Socket::WriteRequest** new_tail) {
     CHECK(NULL == old_head->next);
     // Try to set _write_head to NULL to mark that the write is done.
+
+    // 新的头节点，为反转链表的头节点。
     WriteRequest* new_head = old_head;
     WriteRequest* desired = NULL;
     bool return_when_no_more = true;
+    // 尾节点数据为空  或 不为最后一个节点。
     if (!old_head->data.empty() || !singular_node) {
         desired = old_head;
         // Write is obviously not complete if old_head is not fully written.
         return_when_no_more = false;
     }
+    // 当前 _write_head 是否和 new_head 一样，即是否为尾节点，一样说明没有新请求，_write_head 为null。然后返回true，然后有新请求则会新建keepwrite
+    // 不一样说明有新请求。则设置 new_head 为最新的 _write_head ，返回false。
+    // 执行后 new_head 为 最新的 _write_head。
     if (_write_head.compare_exchange_strong(
             new_head, desired, butil::memory_order_acquire)) {
         // No one added new requests.
@@ -1051,11 +1065,16 @@ bool Socket::IsWriteComplete(Socket::WriteRequest* old_head,
     // Above acquire fence pairs release fence of exchange in Write() to make
     // sure that we see all fields of requests set.
 
+    // write_head->pre->pre->pre 。当前写入的节点是最后一个，需要在处理下一个，则要反转链表
     // Someone added new requests.
     // Reverse the list until old_head.
     WriteRequest* tail = NULL;
+
+    // p 和 new_head 为新添加节点链表 的头节点
     WriteRequest* p = new_head;
+
     do {
+        // 当前节点 为 WriteRequest::UNCONNECTED 占位符，说明队列还没有完全链接起来。 则等待，完成。
         while (p->next == WriteRequest::UNCONNECTED) {
             // TODO(gejun): elaborate this
             sched_yield();
@@ -1066,15 +1085,22 @@ bool Socket::IsWriteComplete(Socket::WriteRequest* old_head,
         p = saved_next;
         CHECK(p != NULL);
     } while (p != old_head);
+    // 这部执行完，列表可能如下
+    // new2->new1->head<-pre1->pre2->pre3
 
     // Link old list with new list.
+
+    // 将尾节点的下一个节点链到新翻转后链表的头节点。
     old_head->next = tail;
     // Call Setup() from oldest to newest, notice that the calling sequence
     // matters for protocols using pipelined_count, this is why we don't
     // calling Setup in above loop which is from newest to oldest.
+
+    // tail 为新翻转链表的头节点
     for (WriteRequest* q = tail; q; q = q->next) {
         q->Setup(this);
     }
+
     if (new_tail) {
         *new_tail = new_head;
     }
@@ -1101,6 +1127,7 @@ int Socket::WaitEpollOut(int fd, bool pollin, const timespec* abstime) {
     }
     // Ignore return value since `fd' might have been removed
     // by `RemoveConsumer' in `SetFailed'
+    // 等待一段时间，无链接则关闭该fd
     butil::ignore_result(edisp.RemoveEpollOut(id(), fd, pollin));
     errno = saved_errno;
     // Could be writable or spurious wakeup (by former epollout)
@@ -1128,12 +1155,16 @@ int Socket::Connect(const timespec* abstime,
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr = remote_side().ip;
     serv_addr.sin_port = htons(remote_side().port);
+
+    // 连接 socket
     const int rc = ::connect(
         sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
     if (rc != 0 && errno != EINPROGRESS) {
         PLOG(WARNING) << "Fail to connect to " << remote_side();
         return -1;
     }
+
+    // 如果有传入回调(write 传入的 KeepWriteIfConnected)
     if (on_connect) {
         EpollOutRequest* req = new(std::nothrow) EpollOutRequest;
         if (req == NULL) {
@@ -1142,6 +1173,7 @@ int Socket::Connect(const timespec* abstime,
         }
         req->fd = sockfd;
         req->timer_id = 0;
+        // 事件回调函数
         req->on_epollout_event = on_connect;
         req->data = data;
         // A temporary Socket to hold `EpollOutRequest', which will
@@ -1149,6 +1181,7 @@ int Socket::Connect(const timespec* abstime,
         SocketId connect_id;
         SocketOptions options;
         options.user = req;
+        // 建立对应的socket
         if (Socket::Create(options, &connect_id) != 0) {
             LOG(FATAL) << "Fail to create Socket";
             delete req;
@@ -1494,6 +1527,8 @@ int Socket::Write(SocketMessagePtr<>& msg, const WriteOptions* options_in) {
 
     // Set `req->next' to UNCONNECTED so that the KeepWrite thread will
     // wait until it points to a valid WriteRequest or NULL.
+
+    // 先设置下一个为UNCONNECTED占位符
     req->next = WriteRequest::UNCONNECTED;
     req->id_wait = opt.id_wait;
     req->set_pipelined_count_and_user_message(opt.pipelined_count, msg.release(), opt.with_auth);
@@ -1502,14 +1537,19 @@ int Socket::Write(SocketMessagePtr<>& msg, const WriteOptions* options_in) {
 
 int Socket::StartWrite(WriteRequest* req, const WriteOptions& opt) {
     // Release fence makes sure the thread getting request sees *req
+
+    // 这时交换后可能的情况
+    // _write_head->next 为 UNCONNECTED 。剩下的为 pre->pre->pre.
     WriteRequest* const prev_head =
         _write_head.exchange(req, butil::memory_order_release);
+    //prev_head 不为空，说明当前列表上有元素正在写入
     if (prev_head != NULL) {
         // Someone is writing to the fd. The KeepWrite thread may spin
         // until req->next to be non-UNCONNECTED. This process is not
         // lock-free, but the duration is so short(1~2 instructions,
         // depending on compiler) that the spin rarely occurs in practice
         // (I've not seen any spin in highly contended tests).
+        // 等待链表链接起来
         req->next = prev_head;
         return 0;
     }
@@ -1523,6 +1563,7 @@ int Socket::StartWrite(WriteRequest* req, const WriteOptions& opt) {
     req->next = NULL;
     
     // Connect to remote_side() if not.
+    // 判断链接是否有效
     int ret = ConnectIfNot(opt.abstime, req);
     if (ret < 0) {
         saved_errno = errno;
@@ -1553,6 +1594,8 @@ int Socket::StartWrite(WriteRequest* req, const WriteOptions& opt) {
     } else {
         nw = req->data.cut_into_file_descriptor(fd());
     }
+
+    // 写出失败 错误信息
     if (nw < 0) {
         // RTMP may return EOVERCROWDED
         if (errno != EAGAIN && errno != EOVERCROWDED) {
@@ -1564,16 +1607,20 @@ int Socket::StartWrite(WriteRequest* req, const WriteOptions& opt) {
             goto FAIL_TO_WRITE;
         }
     } else {
+        // 记录写入数据
         AddOutputBytes(nw);
     }
+    // 判断是否写入完成，写完直接结束
     if (IsWriteComplete(req, true, NULL)) {
         ReturnSuccessfulWriteRequest(req);
         return 0;
     }
 
 KEEPWRITE_IN_BACKGROUND:
+
     ReAddress(&ptr_for_keep_write);
     req->socket = ptr_for_keep_write.release();
+    // 开启线程继续写入，当前线程处理下一个
     if (bthread_start_background(&th, &BTHREAD_ATTR_NORMAL,
                                  KeepWrite, req) != 0) {
         LOG(FATAL) << "Fail to start KeepWrite";
@@ -1603,12 +1650,16 @@ void* Socket::KeepWrite(void* void_arg) {
     WriteRequest* cur_tail = NULL;
     do {
         // req was written, skip it.
+        // req 有下一个节点，且req已经消费完了。则 req 指向下一个节点。 当前saved_req 设置请求成功
         if (req->next != NULL && req->data.empty()) {
             WriteRequest* const saved_req = req;
+            // 此时req == WriteRequest::UNCONNECTED
             req = req->next;
             s->ReturnSuccessfulWriteRequest(saved_req);
         }
+        // 当前req 继续写入
         const ssize_t nw = s->DoWrite(req);
+        // 判断是否写入出错
         if (nw < 0) {
             if (errno != EAGAIN && errno != EOVERCROWDED) {
                 const int saved_errno = errno;
@@ -1620,6 +1671,7 @@ void* Socket::KeepWrite(void* void_arg) {
         } else {
             s->AddOutputBytes(nw);
         }
+        // req 有下一个节点，且req已经消费完了。则 req 指向下一个节点。 当前saved_req 设置请求成功
         // Release WriteRequest until non-empty data or last request.
         while (req->next != NULL && req->data.empty()) {
             WriteRequest* const saved_req = req;
@@ -1632,6 +1684,7 @@ void* Socket::KeepWrite(void* void_arg) {
         // Update(1/8/2016, r31823): Still working.
         // Update(8/15/2017): Not working, performance downgraded.
         //if (nw <= 0 || req->data.empty()/*note*/) {
+        //  判断 req 写入情况
         if (nw <= 0) {
             g_vars->nwaitepollout << 1;
             bool pollin = (s->_on_edge_triggered_events != NULL);
@@ -1641,6 +1694,7 @@ void* Socket::KeepWrite(void* void_arg) {
             // growing infinitely.
             const timespec duetime =
                 butil::milliseconds_from_now(WAIT_EPOLLOUT_TIMEOUT_MS);
+            // 等待一段时间，关闭该链接
             const int rc = s->WaitEpollOut(s->fd(), pollin, &duetime);
             if (rc < 0 && errno != ETIMEDOUT) {
                 const int saved_errno = errno;
@@ -1650,12 +1704,18 @@ void* Socket::KeepWrite(void* void_arg) {
                 break;
             }
         }
+
+        // cur_tail 指向翻转链表后结尾
         if (NULL == cur_tail) {
             for (cur_tail = req; cur_tail->next != NULL;
                  cur_tail = cur_tail->next);
         }
         // Return when there's no more WriteRequests and req is completely
         // written.
+
+        // curtail 为链表结尾 。所以IsWriteComplete 函数 主管判断是否有新节点，并反转链表，
+        // KeepWrite主要进行读写操作
+        // req == cur_tail 说明当前处理到链表最后一个节点
         if (s->IsWriteComplete(cur_tail, (req == cur_tail), &cur_tail)) {
             CHECK_EQ(cur_tail, req);
             s->ReturnSuccessfulWriteRequest(req);
@@ -1921,9 +1981,11 @@ AuthContext* Socket::mutable_auth_context() {
 int Socket::StartInputEvent(SocketId id, uint32_t events,
                             const bthread_attr_t& thread_attr) {
     SocketUniquePtr s;
+    // 取得id对应的Socket，包装在一个会自动释放的unique_ptr中(SocketUniquePtr)，当Socket被SetFailed后，返回指针为空。只要Address返回了非空指针，其内容保证不会变化，直到指针自动析构。这个函数是wait-free的。
     if (Address(id, &s) < 0) {
         return -1;
     }
+    // 检查对应设置的事件，注意第一个建立连接的socket被设置为OnNewConnection
     if (NULL == s->_on_edge_triggered_events) {
         // Callback can be NULL when receiving error epoll events
         // (Added into epoll by `WaitConnected')
@@ -1944,6 +2006,7 @@ int Socket::StartInputEvent(SocketId id, uint32_t events,
     // Passing e[i].events causes complex visibility issues and
     // requires stronger memory fences, since reading the fd returns
     // error as well, we don't pass the events.
+    // 返回 fetch_add 原有的值， 验证当前的 fd 是否正在处理
     if (s->_nevent.fetch_add(1, butil::memory_order_acq_rel) == 0) {
         // According to the stats, above fetch_add is very effective. In a
         // server processing 1 million requests per second, this counter
@@ -1952,6 +2015,8 @@ int Socket::StartInputEvent(SocketId id, uint32_t events,
 
         bthread_t tid;
         // transfer ownership as well, don't use s anymore!
+
+        // 调用release 会切断unique_ptr 和它原来管理的对象的联系。release 返回的指针通常被用来初始化另一个智能指针或给另一个智能指针赋值。如果不用另一个智能指针来保存release返回的指针，程序就要负责资源的释放。
         Socket* const p = s.release();
 
         bthread_attr_t attr = thread_attr;

@@ -563,6 +563,7 @@ Acceptor* Server::BuildAcceptor() {
     InputMessageHandler handler;
     std::vector<Protocol> protocols;
     ListProtocols(&protocols);
+    // 拼装Protocols 为 InputMessageHandler，然后 添加到acceptor中
     for (size_t i = 0; i < protocols.size(); ++i) {
         if (protocols[i].process_request == NULL) {
             // The protocol does not support server-side.
@@ -576,6 +577,8 @@ Acceptor* Server::BuildAcceptor() {
             continue;
         }
         // `process_request' is required at server side
+
+        //  服务三个函数
         handler.parse = protocols[i].parse;
         handler.process = protocols[i].process_request;
         handler.verify = protocols[i].verify;
@@ -945,6 +948,7 @@ int Server::StartInternal(const butil::ip_t& ip,
     _listen_addr.ip = ip;
     for (int port = port_range.min_port; port <= port_range.max_port; ++port) {
         _listen_addr.port = port;
+        // 新建socket 
         butil::fd_guard sockfd(tcp_listen(_listen_addr));
         if (sockfd < 0) {
             if (port != port_range.max_port) { // not the last port, try next
@@ -969,6 +973,8 @@ int Server::StartInternal(const butil::ip_t& ip,
             }
         }
         if (_am == NULL) {
+
+            // 新建Acceptor
             _am = BuildAcceptor();
             if (NULL == _am) {
                 LOG(ERROR) << "Fail to build acceptor";
@@ -980,6 +986,7 @@ int Server::StartInternal(const butil::ip_t& ip,
         _status = RUNNING;
         time(&_last_start_time);
         GenerateVersionIfNeeded();
+        // 统计运行的服务
         g_running_server_count.fetch_add(1, butil::memory_order_relaxed);
 
         // Pass ownership of `sockfd' to `_am'

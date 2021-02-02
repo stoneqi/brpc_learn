@@ -31,7 +31,7 @@
 
 
 namespace brpc {
-
+// 全局的 g_messenger 发送者
 InputMessenger* g_messenger = NULL;
 static pthread_once_t g_messenger_init = PTHREAD_ONCE_INIT;
 static void InitClientSideMessenger() {
@@ -108,7 +108,7 @@ ParseResult InputMessenger::CutInputMessage(
         if (result.is_ok() ||
             result.error() == PARSE_ERROR_NOT_ENOUGH_DATA) {
             m->set_preferred_index(i);
-            *index = i;
+            *index = i; // 设置index
             return result;
         } else if (result.error() != PARSE_ERROR_TRY_OTHERS) {
             // Critical error, return directly.
@@ -142,7 +142,8 @@ struct RunLastMessage {
     }
 };
 
-static void QueueMessage(InputMessageBase* to_run_msg,
+// 处理fd 读事件消息
+static void  QueueMessage(InputMessageBase* to_run_msg,
                          int* num_bthread_created,
                          bthread_keytable_pool_t* keytable_pool) {
     if (!to_run_msg) {
@@ -165,6 +166,7 @@ static void QueueMessage(InputMessageBase* to_run_msg,
     }
 }
 
+// 处理fd上有读事件的情况
 void InputMessenger::OnNewMessages(Socket* m) {
     // Notes:
     // - If the socket has only one message, the message will be parsed and
@@ -176,7 +178,9 @@ void InputMessenger::OnNewMessages(Socket* m) {
     //   is batched(notice the BTHREAD_NOSIGNAL and bthread_flush).
     // - Verify will always be called in this bthread at most once and before
     //   any process.
+    // 
     InputMessenger* messenger = static_cast<InputMessenger*>(m->user());
+    // 记录handlers处理器
     const InputMessageHandler* handlers = messenger->_handlers;
     int progress = Socket::PROGRESS_INIT;
 
@@ -215,6 +219,7 @@ void InputMessenger::OnNewMessages(Socket* m) {
                 m->SetFailed(saved_errno, "Fail to read from %s: %s",
                              m->description().c_str(), berror(saved_errno));
                 return;
+                
             } else if (!m->MoreReadEvents(&progress)) {
                 return;
             } else { // new events during processing
@@ -231,6 +236,7 @@ void InputMessenger::OnNewMessages(Socket* m) {
         int num_bthread_created = 0;
         while (1) {
             size_t index = 8888;
+            // 切割消息调用 protocol parse解析
             ParseResult pr = messenger->CutInputMessage(m, &index, read_eof);
             if (!pr.is_ok()) {
                 if (pr.error() == PARSE_ERROR_NOT_ENOUGH_DATA) {
@@ -254,8 +260,10 @@ void InputMessenger::OnNewMessages(Socket* m) {
                 }
             }
 
+            // 统计信息
             m->AddInputMessages(1);
             // Calculate average size of messages
+            // 判断是否读完
             const size_t cur_size = m->_read_buf.length();
             if (cur_size == 0) {
                 // _read_buf is consumed, it's good timing to return blocks
@@ -278,12 +286,17 @@ void InputMessenger::OnNewMessages(Socket* m) {
             if (pr.message() == NULL) { // the Process() step can be skipped.
                 continue;
             }
+
+            // 统计一些时间信息
             pr.message()->_received_us = received_us;
             pr.message()->_base_real_us = base_realtime;
                         
             // This unique_ptr prevents msg to be lost before transfering
             // ownership to last_msg
+            // 解析出的Pr 用msg保护，即加一个计数应用，防止析构
             DestroyingPtr<InputMessageBase> msg(pr.message());
+            
+            // 保护 is_read_progressive 和 read 不构成原子操作，又有数据传来时，得先执行了上次的last_mase
             QueueMessage(last_msg.release(), &num_bthread_created,
                              m->_keytable_pool);
             if (handlers[index].process == NULL) {
@@ -292,13 +305,17 @@ void InputMessenger::OnNewMessages(Socket* m) {
             }
             m->ReAddress(&msg->_socket);
             m->PostponeEOF();
+
+            // 复制当前解析成功的 reqeust process 处理函数
             msg->_process = handlers[index].process;
             msg->_arg = handlers[index].arg;
             
+            // 判断是否包含验证
             if (handlers[index].verify != NULL) {
                 int auth_error = 0;
                 if (0 == m->FightAuthentication(&auth_error)) {
                     // Get the right to authenticate
+                    // 调用 对应协议的验证函数
                     if (handlers[index].verify(msg.get())) {
                         m->SetAuthentication(0);
                     } else {
@@ -314,16 +331,29 @@ void InputMessenger::OnNewMessages(Socket* m) {
                       "destroyed when authentication failed";
                 }
             }
+            
             if (!m->is_read_progressive()) {
+                // 如果不在读取中，则把 当前msg为最后一个，转移到last_msg，下次循环处理
+                // 注：为最后一个消息时，CutInputMessage 返回错误，last_msg被析构，调用
+                // RunLastMessage 处理，也就实现了最后一个消息在本bthread原地执行
+                // 但是由于和下次循环不构成原子关系，所以可能该socket又有数据到来，所以在
+                // 上面继续了处理last_mas 
                 // Transfer ownership to last_msg
                 last_msg.reset(msg.release());
             } else {
+                // 如果在读取中，则把 执行QueueMessage 新起一个Bthread调用用户函数处理当前消息
+                // thrift 为 ProcessThriftRequest 函数
+                // 用户函数对应关系
+                // handler.parse = protocols[i].parse;
+                // handler.process = protocols[i].process_request;
+                // handler.verify = protocols[i].verify;
                 QueueMessage(msg.release(), &num_bthread_created,
                                  m->_keytable_pool);
                 bthread_flush();
                 num_bthread_created = 0;
             }
         }
+
         if (num_bthread_created) {
             bthread_flush();
         }

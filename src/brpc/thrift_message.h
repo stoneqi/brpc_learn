@@ -184,6 +184,7 @@ public:
 
 template <typename T>
 T* ThriftFramedMessage::Cast() {
+    //防止多次解析
     if (_raw_instance) {
         auto p = dynamic_cast<details::ThriftMessageHolder<T>*>(_raw_instance);
         if (p) {
@@ -191,12 +192,17 @@ T* ThriftFramedMessage::Cast() {
         }
         delete _raw_instance;
     }
+    // 新建一个解析体
     auto raw_msg_wrapper = new details::ThriftMessageHolder<T>;
+    // 设置一个T的结构体用于保存解析出的数据
     T* raw_msg = &raw_msg_wrapper->msg;
+    // 保存当前解析的值
     _raw_instance = raw_msg_wrapper;
+    // 设置标志符
     _own_raw_instance = true;
 
     if (!body.empty()) {
+        // IObuf 中 读取数据到 &raw_msg_wrapper->msg
         if (!policy::ReadThriftStruct(body, _raw_instance, field_id)) {
             LOG(ERROR) << "Fail to parse " << butil::class_name<T>();
         }

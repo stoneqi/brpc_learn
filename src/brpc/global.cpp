@@ -631,6 +631,7 @@ static void GlobalInitializeOrDieImpl() {
 
     // We never join GlobalUpdate, let it quit with the process.
     bthread_t th;
+    // 开启bthread 处理 默认设置的一天bvar变量自动统计
     CHECK(bthread_start_background(&th, NULL, GlobalUpdate, NULL) == 0)
         << "Fail to start GlobalUpdate";
 }

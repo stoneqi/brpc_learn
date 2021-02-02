@@ -220,6 +220,7 @@ int EventDispatcher::RemoveEpollOut(SocketId socket_id,
     return -1;
 }
 
+// 增加消费者 当前SocketID 和，服务建立的监听fd socket
 int EventDispatcher::AddConsumer(SocketId socket_id, int fd) {
     if (_epfd < 0) {
         errno = EINVAL;
@@ -232,6 +233,7 @@ int EventDispatcher::AddConsumer(SocketId socket_id, int fd) {
 #ifdef BRPC_SOCKET_HAS_EOF
     evt.events |= has_epollrdhup;
 #endif
+    // 添加FD 到epoll ，发生边缘事件时，调用OnNewConnections
     return epoll_ctl(_epfd, EPOLL_CTL_ADD, fd, &evt);
 #elif defined(OS_MACOSX)
     struct kevent evt;
@@ -278,6 +280,7 @@ void EventDispatcher::Run() {
 #if defined(OS_LINUX)
         epoll_event e[32];
 #ifdef BRPC_ADDITIONAL_EPOLL
+        // 持续等待epoll_wait 
         // Performance downgrades in examples.
         int n = epoll_wait(_epfd, e, ARRAY_SIZE(e), 0);
         if (n == 0) {
@@ -308,8 +311,11 @@ void EventDispatcher::Run() {
 #endif
             break;
         }
+
+        // 处理当前发生读事件的fd
         for (int i = 0; i < n; ++i) {
 #if defined(OS_LINUX)
+
             if (e[i].events & (EPOLLIN | EPOLLERR | EPOLLHUP)
 #ifdef BRPC_SOCKET_HAS_EOF
                 || (e[i].events & has_epollrdhup)
@@ -327,8 +333,16 @@ void EventDispatcher::Run() {
             }
 #endif
         }
+        // 处理当前发写事件的fd
         for (int i = 0; i < n; ++i) {
 #if defined(OS_LINUX)
+            // EPOLLIN     //表示对应的文件描述符可以读（包括对端SOCKET正常关闭）；
+            // EPOLLOUT    //表示对应的文件描述符可以写；
+            // EPOLLPRI    //表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）；
+            // EPOLLERR    //表示对应的文件描述符发生错误；
+            // EPOLLHUP    //表示对应的文件描述符被挂断；
+            // EPOLLET     //将EPOLL设为边缘触发(Edge Triggered)模式，这是相对于水平触发(Level Triggered)来说的。
+            // EPOLLONESHOT//只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里。
             if (e[i].events & (EPOLLOUT | EPOLLERR | EPOLLHUP)) {
                 // We don't care about the return value.
                 Socket::HandleEpollOut(e[i].data.u64);
@@ -353,6 +367,8 @@ static void StopAndJoinGlobalDispatchers() {
     }
 }
 void InitializeGlobalDispatchers() {
+
+    // 新建事件分发器
     g_edisp = new EventDispatcher[FLAGS_event_dispatcher_num];
     for (int i = 0; i < FLAGS_event_dispatcher_num; ++i) {
         const bthread_attr_t attr = FLAGS_usercode_in_pthread ?
@@ -365,10 +381,12 @@ void InitializeGlobalDispatchers() {
 }
 
 EventDispatcher& GetGlobalEventDispatcher(int fd) {
+    // 初始化全局事件分发器，fd做唯一索引
     pthread_once(&g_edisp_once, InitializeGlobalDispatchers);
     if (FLAGS_event_dispatcher_num == 1) {
         return g_edisp[0];
     }
+    // 直接返回当前事件分发器 根据fd取模总数，所以新的fd可能映射到不同的事件分发器中。
     int index = butil::fmix32(fd) % FLAGS_event_dispatcher_num;
     return g_edisp[index];
 }

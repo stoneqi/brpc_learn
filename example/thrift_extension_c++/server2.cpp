@@ -55,9 +55,12 @@ public:
             // TODO: Following Cast<> drops data field from ProxyRequest which
             // does not recognize the field, should be debugged further.
             // LOG(INFO) << "req=" << *req->Cast<example::ProxyRequest>();
+
+            // 代理方式访问 。用户自己处理 ThriftFramedMessage
             stub.CallMethod("RealEcho", &cntl, req, res, NULL);
             done->Run();
         } else if (cntl->thrift_method_name() == "RealEcho") {
+            // 不代理方式，系统转为对应数据
             return RealEcho(cntl, req->Cast<example::EchoRequest>(),
                         res->Cast<example::EchoResponse>(), done);
         } else {    

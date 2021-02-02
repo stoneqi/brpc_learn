@@ -281,6 +281,7 @@ int Channel::Init(butil::EndPoint server_addr_and_port,
     return InitSingle(server_addr_and_port, "", options);
 }
 
+// 初始化了一个socket 连接  _server_id 设置为对应socket 的 socketID
 int Channel::InitSingle(const butil::EndPoint& server_addr_and_port,
                         const char* raw_server_address,
                         const ChannelOptions* options) {
@@ -306,6 +307,7 @@ int Channel::InitSingle(const butil::EndPoint& server_addr_and_port,
     if (CreateSocketSSLContext(_options, &ssl_ctx) != 0) {
         return -1;
     }
+    // SocketMapKey 定义一个独一五二的key _server_id此时未定义
     if (SocketMapInsert(SocketMapKey(server_addr_and_port, sig),
                         &_server_id, ssl_ctx) != 0) {
         LOG(ERROR) << "Fail to insert into SocketMap";
@@ -369,9 +371,13 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
                          google::protobuf::Message* response,
                          google::protobuf::Closure* done) {
     const int64_t start_send_real_us = butil::gettimeofday_us();
+
+    // 转为通用Controller
     Controller* cntl = static_cast<Controller*>(controller_base);
+    // 设置事件
     cntl->OnRPCBegin(start_send_real_us);
     // Override max_retry first to reset the range of correlation_id
+    // 覆盖最大重试次数
     if (cntl->max_retry() == UNSET_MAGIC_NUM) {
         cntl->set_max_retry(_options.max_retry);
     }
@@ -467,6 +473,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
     // Ensure that serialize_request is done before pack_request in all
     // possible executions, including:
     //   HandleSendFailed => OnVersionedRPCReturned => IssueRPC(pack_request)
+    //调用用户函数序列化请求 请求打入Iobuf， request 实际为frame meaaage类型
     _serialize_request(&cntl->_request_buf, cntl, request);
     if (cntl->FailedInline()) {
         // Handle failures caused by serialize_request, and these error_codes
@@ -492,7 +499,8 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
          cntl->timeout_ms() < 0)) {
         // Setup timer for backup request. When it occurs, we'll setup a
         // timer of timeout_ms before sending backup request.
-
+        
+        // 发送备份请求，即重试
         // _deadline_us is for truncating _connect_timeout_ms and resetting
         // timer when EBACKUPREQUEST occurs.
         if (cntl->timeout_ms() < 0) {
@@ -500,6 +508,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
         } else {
             cntl->_deadline_us = cntl->timeout_ms() * 1000L + start_send_real_us;
         }
+
         const int rc = bthread_timer_add(
             &cntl->_timeout_id,
             butil::microseconds_to_timespec(
@@ -512,6 +521,7 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
     } else if (cntl->timeout_ms() >= 0) {
         // Setup timer for RPC timetout
 
+        // 超时
         // _deadline_us is for truncating _connect_timeout_ms
         cntl->_deadline_us = cntl->timeout_ms() * 1000L + start_send_real_us;
         const int rc = bthread_timer_add(
@@ -526,7 +536,9 @@ void Channel::CallMethod(const google::protobuf::MethodDescriptor* method,
         cntl->_deadline_us = -1;
     }
 
+    // 发起调用
     cntl->IssueRPC(start_send_real_us);
+
     if (done == NULL) {
         // MUST wait for response when sending synchronous RPC. It will
         // be woken up by callback when RPC finishes (succeeds or still

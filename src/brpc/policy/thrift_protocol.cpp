@@ -76,28 +76,36 @@ ReadThriftMessageBegin(butil::IOBuf* body,
     //   |             |          |        |          |
     //   3     +       1      +   4    +   >0   +     4
     uint32_t version_and_len_buf[2];
+    // 拷贝前4字节到version_and_len_buf
     size_t k = body->copy_to(version_and_len_buf, sizeof(version_and_len_buf));
     if (k != sizeof(version_and_len_buf) ) {
         return butil::Status(-1, "Fail to copy %" PRIu64 " bytes from body",
                              sizeof(version_and_len_buf));
     }
+    // 相与在转换类型
     *mtype = (apache::thrift::protocol::TMessageType)
         (ntohl(version_and_len_buf[0]) & 0x000000FF);
+    
+    // 获得 method_name_length
     const uint32_t method_name_length = ntohl(version_and_len_buf[1]);
     if (method_name_length > MAX_THRIFT_METHOD_NAME_LENGTH) {
         return butil::Status(-1, "method_name_length=%u is too long",
                              method_name_length);
     }
 
+    // 从IOBUf切全部数据
     char buf[sizeof(version_and_len_buf) + method_name_length + 4];
     k = body->cutn(buf, sizeof(buf));
     if (k != sizeof(buf)) {
         return butil::Status(-1, "Fail to cut %" PRIu64 " bytes", sizeof(buf));
     }
+    //起始地址 + 长度 获得方法名字
     method_name->assign(buf + sizeof(version_and_len_buf), method_name_length);
     // suppress strict-aliasing warning
+    // 获得 seq_id
     uint32_t* p_seq_id = (uint32_t*)(buf + sizeof(version_and_len_buf) + method_name_length);
     *seq_id = ntohl(*p_seq_id);
+    // 返回成功标志
     return butil::Status::OK();
 }
 
@@ -120,16 +128,20 @@ WriteThriftMessageBegin(char* buf,
     *p = htonl(seq_id);
 }
 
+// 从IOBuf中解析二进制到对应类型，主要使用thrift生成代码的read方法
 bool ReadThriftStruct(const butil::IOBuf& body,
                       ThriftMessageBase* raw_msg,
                       int16_t expected_fid) {
     const size_t body_len  = body.size();
     uint8_t* thrift_buffer = (uint8_t*)malloc(body_len);
     body.copy_to(thrift_buffer, body_len);
+    // 新建TMemoryBuffer 用于保存序列化，解析反序列化的数据
     auto in_buffer =
         THRIFT_STDCXX::make_shared<apache::thrift::transport::TMemoryBuffer>(
             thrift_buffer, body_len,
             ::apache::thrift::transport::TMemoryBuffer::TAKE_OWNERSHIP);
+    
+    // 新建TBinaryProtocolT数据序列化器
     apache::thrift::protocol::TBinaryProtocolT<apache::thrift::transport::TMemoryBuffer> iprot(in_buffer);
 
     // The following code was taken from thrift auto generate code
@@ -147,6 +159,7 @@ bool ReadThriftStruct(const butil::IOBuf& body,
             break;
         }
         if (fid == expected_fid) {
+            // 结构体读取接口体
             if (ftype == ::apache::thrift::protocol::T_STRUCT) {
                 xfer += raw_msg->Read(&iprot);
                 success = true;
@@ -238,6 +251,7 @@ void ThriftClosure::DoRun() {
     if (span) {
         span->set_start_send_us(butil::cpuwide_time_us());
     }
+    // 获得发送的socket
     Socket* sock = accessor.get_sending_socket();
     MethodStatus* method_status = (server->options().thrift_service ? 
         server->options().thrift_service->_status : NULL);
@@ -278,10 +292,13 @@ void ThriftClosure::DoRun() {
 
     butil::IOBuf write_buf;
 
+    // 主要为thrift代码，序列化返回数据到IOBuf
     // The following code was taken and modified from thrift auto generated code
     if (_controller.Failed()) {
+
         auto out_buffer =
             THRIFT_STDCXX::make_shared<apache::thrift::transport::TMemoryBuffer>();
+
         apache::thrift::protocol::TBinaryProtocolT<apache::thrift::transport::TMemoryBuffer> oprot(out_buffer);
         ::apache::thrift::TApplicationException x(_controller.ErrorText());
         oprot.writeMessageBegin(
@@ -341,6 +358,8 @@ void ThriftClosure::DoRun() {
     }
     // Have the risk of unlimited pending responses, in which case, tell
     // users to set max_concurrency.
+
+    // BRPC 自带实现
     Socket::WriteOptions wopt;
     wopt.ignore_eovercrowded = true;
     if (sock->Write(&write_buf, &wopt) != 0) {
@@ -364,8 +383,10 @@ ParseResult ParseThriftMessage(butil::IOBuf* source,
     if (n < sizeof(header_buf)) {
         return MakeParseError(PARSE_ERROR_NOT_ENOUGH_DATA);
     }
-
+    // ntohl 网络字节序转主机字节序
+    // 从header_buf +4 byte 偏移地址 转成32位uint指针， 再取值
     const uint32_t sz = ntohl(*(uint32_t*)(header_buf + sizeof(thrift_head_t)));
+    // 最后1byte分隔符
     uint32_t version = sz & THRIFT_HEAD_VERSION_MASK;
     if (version != THRIFT_HEAD_VERSION_1) {
         RPC_VLOG << "version=" << version
@@ -374,16 +395,26 @@ ParseResult ParseThriftMessage(butil::IOBuf* source,
     }
     // suppress strict-aliasing warning
     thrift_head_t* head = (thrift_head_t*)header_buf;
+
+    //提取前4byte 值位 uint32
     const uint32_t body_len = ntohl(head->body_len);
+
+    // 数据太大或 source数据不匹配
     if (body_len > FLAGS_max_body_size) {
         return MakeParseError(PARSE_ERROR_TOO_BIG_DATA);
     } else if (source->length() < sizeof(thrift_head_t) + body_len) {
         return MakeParseError(PARSE_ERROR_NOT_ENOUGH_DATA);
     }
 
+    // MostCommonMessage 继承InputMessageBase
+    // 从ResoucePool 获得一个meta+payload 的 CommonMessage 结构体
     MostCommonMessage* msg = MostCommonMessage::Get();
     source->pop_front(sizeof(thrift_head_t));
+    // 切割 source 中 payload到 msg->payload中
     source->cutn(&msg->payload, body_len);
+
+    // ParseResult 中 msg 赋值
+    // MostCommonMessage 继承InputMessageBase ，发生了类型转变
     return MakeMessage(msg);
 }
 
@@ -444,17 +475,26 @@ static void EndRunningCallMethodInPool(ThriftService* service,
 void ProcessThriftRequest(InputMessageBase* msg_base) {
     const int64_t start_parse_us = butil::cpuwide_time_us();   
 
+    // 类型强转为 MostCommonMessage
     DestroyingPtr<MostCommonMessage> msg(static_cast<MostCommonMessage*>(msg_base));
+    //msg释放 socket， RAII解析socket。msg为
     SocketUniquePtr socket_guard(msg->ReleaseSocket());
+
     Socket* socket = socket_guard.get();
+
     const Server* server = static_cast<const Server*>(msg_base->arg());
     ScopedNonServiceError non_service_error(server);
 
+    // ThriftClosure 保存了 新建控制器 请求 回复所有信息
     ThriftClosure* thrift_done = new ThriftClosure;
+
     ClosureGuard done_guard(thrift_done);
+
+    // 请求全程控制器 管理状态 缓存等
     Controller* cntl = &(thrift_done->_controller);
     ThriftFramedMessage* req = &(thrift_done->_request);
     ThriftFramedMessage* res = &(thrift_done->_response);
+
     thrift_done->_received_us = msg->received_us();
 
     ServerPrivateAccessor server_accessor(server);
@@ -470,13 +510,16 @@ void ProcessThriftRequest(InputMessageBase* msg_base) {
         .set_begin_time_us(msg_base->received_us())
         .move_in_server_receiving_sock(socket_guard);
 
+    // ReadThriftMessageBegin 解析格式
     uint32_t seq_id;
     ::apache::thrift::protocol::TMessageType mtype;
+    
     butil::Status st = ReadThriftMessageBegin(
         &msg->payload, &cntl->_thrift_method_name, &mtype, &seq_id);
     if (!st.ok()) {
         return cntl->SetFailed(EREQUEST, "%s", st.error_cstr());
     }
+    // 此时msg->payload剩下的为参数信息，保存到req->body，提供后面类型强转
     msg->payload.swap(req->body);
     req->field_id = THRIFT_REQUEST_FID;
     cntl->set_log_id(seq_id);    // Pass seq_id by log_id
@@ -505,6 +548,7 @@ void ProcessThriftRequest(InputMessageBase* msg_base) {
         bthread_assign_data((void*)&server->thread_local_options());
     }
 
+    // 设置 RPC trace 系统信息
     Span* span = NULL;
     if (IsTraceable(false)) {
         span = Span::CreateServerSpan(0, 0, 0, msg->base_real_us());
@@ -517,6 +561,7 @@ void ProcessThriftRequest(InputMessageBase* msg_base) {
         span->set_request_size(sizeof(thrift_head_t) + req->body.size());
     }
 
+    // 检测一些状态
     if (!server->IsRunning()) {
         return cntl->SetFailed(ELOGOFF, "Server is stopping");
     }
@@ -543,10 +588,12 @@ void ProcessThriftRequest(InputMessageBase* msg_base) {
 
     done_guard.release();
 
+    // 运行用户请求
     if (!FLAGS_usercode_in_pthread) {
         return ProcessThriftFramedRequestNoExcept(service, cntl, req, res, thrift_done);
     }
 
+    // 在pthread 运行请求
     if (BeginRunningUserCode()) {
         ProcessThriftFramedRequestNoExcept(service, cntl, req, res, thrift_done);
         return EndRunningUserCodeInPlace();
@@ -641,6 +688,7 @@ bool VerifyThriftRequest(const InputMessageBase* msg_base) {
     return true;
 }
 
+// ThriftMessageBase->TBinaryProtocolT->TMemoryBuffer->IOBuf
 void SerializeThriftRequest(butil::IOBuf* request_buf, Controller* cntl,
                             const google::protobuf::Message* req_base) {
     if (req_base == NULL) {
@@ -664,14 +712,19 @@ void SerializeThriftRequest(butil::IOBuf* request_buf, Controller* cntl,
         return cntl->SetFailed(ENOMETHOD, "thrift_method_name is too long");
     }
 
+    // req_base 转为 ThriftFramedMessage
     const ThriftFramedMessage* req = (const ThriftFramedMessage*)req_base;
 
     // xxx_pargs write
+    // ThriftFramedMessage 2 TBinaryProtocolT
     if (req->raw_instance()) {
-        auto out_buffer =
+
+        // 用 TMemoryBuffer TBinaryProtocolT 包装
+         auto out_buffer =
             THRIFT_STDCXX::make_shared<apache::thrift::transport::TMemoryBuffer>();
         apache::thrift::protocol::TBinaryProtocolT<apache::thrift::transport::TMemoryBuffer> oprot(out_buffer);
 
+        // 开始写入消息头
         oprot.writeMessageBegin(
             method_name, ::apache::thrift::protocol::T_CALL, 0/*seq_id*/);
 
@@ -685,11 +738,14 @@ void SerializeThriftRequest(butil::IOBuf* request_buf, Controller* cntl,
         memcpy(p, "_pargs", 6);
         p += 6;
         *p = '\0';
+        // 写入参数开始字符串
         xfer += oprot.writeStructBegin(struct_begin_str);
+        //写入字段开始
         xfer += oprot.writeFieldBegin("request", ::apache::thrift::protocol::T_STRUCT,
                                       THRIFT_REQUEST_FID);
 
         // request's write
+        // 写入实例
         xfer += req->raw_instance()->Write(&oprot);
         
         xfer += oprot.writeFieldEnd();
@@ -708,6 +764,7 @@ void SerializeThriftRequest(butil::IOBuf* request_buf, Controller* cntl,
         request_buf->append(&head, sizeof(head));
         request_buf->append(buf, sz);
     } else {
+        // 没有参数
         const size_t mb_size = ThriftMessageBeginSize(method_name);
         char buf[sizeof(thrift_head_t) + mb_size];
         // suppress strict-aliasing warning

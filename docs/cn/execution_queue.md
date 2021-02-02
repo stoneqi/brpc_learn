@@ -53,7 +53,7 @@ ExecutionQueue和mutex都可以用来在多线程场景中消除竞争. 相比�
 
 ### 实现执行函数
 
-```
+```c++
 // Iterate over the given tasks
 //
 // Example:
@@ -77,7 +77,7 @@ class TaskIterator;
 
 ### 启动一个ExecutionQueue:
 
-```
+```c++
 // Start a ExecutionQueue. If |options| is NULL, the queue will be created with
 // default options.
 // Returns 0 on success, errno otherwise
@@ -95,7 +95,7 @@ int execution_queue_start(
 
 ### 停止一个ExecutionQueue:
 
-```
+```c++
 // Stop the ExecutionQueue.
 // After this function is called:
 //  - All the following calls to execution_queue_execute would fail immediately.
@@ -120,7 +120,7 @@ stop和join都可以多次调用， 都会又合理的行为。stop可以随时�
 
 ### 提交任务
 
-```
+```c++
 struct TaskOptions {
     TaskOptions();
     TaskOptions(bool high_priority, bool in_place_if_possible);

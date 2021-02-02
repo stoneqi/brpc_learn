@@ -44,9 +44,13 @@ int main(int argc, char* argv[]) {
     
     // Initialize the channel, NULL means using default options. 
     brpc::ChannelOptions options;
+
+    // 设置协议
     options.protocol = brpc::PROTOCOL_THRIFT;
     options.timeout_ms = FLAGS_timeout_ms/*milliseconds*/;
     options.max_retry = FLAGS_max_retry;
+
+    // channel 
     if (channel.Init(FLAGS_server.c_str(), FLAGS_load_balancer.c_str(), &options) != 0) {
         LOG(ERROR) << "Fail to initialize channel";
         return -1;

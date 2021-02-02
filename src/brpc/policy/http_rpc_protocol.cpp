@@ -1498,6 +1498,7 @@ void ProcessHttpRequest(InputMessageBase *msg) {
     if (!FLAGS_usercode_in_pthread) {
         return svc->CallMethod(method, cntl, req, res, done);
     }
+    // call 用户代码， done  method cntl req， res 为具体实现内容
     if (BeginRunningUserCode()) {
         svc->CallMethod(method, cntl, req, res, done);
         return EndRunningUserCodeInPlace();

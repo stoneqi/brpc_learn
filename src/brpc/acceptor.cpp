@@ -64,6 +64,7 @@ int Acceptor::StartAccept(int listened_fd, int idle_timeout_sec,
         LOG(FATAL) << "Acceptor hasn't stopped yet: status=" << status();
         return -1;
     }
+    // 定时关闭空闲连接
     if (idle_timeout_sec > 0) {
         if (bthread_start_background(&_close_idle_tid, NULL,
                                      CloseIdleConnections, this) != 0) {
@@ -79,6 +80,7 @@ int Acceptor::StartAccept(int listened_fd, int idle_timeout_sec,
     SocketOptions options;
     options.fd = listened_fd;
     options.user = this;
+    // 设置socketedge trigger 触发事件
     options.on_edge_triggered_events = OnNewConnections;
     if (Socket::Create(options, &_acception_id) != 0) {
         // Close-idle-socket thread will be stopped inside destructor
@@ -91,6 +93,7 @@ int Acceptor::StartAccept(int listened_fd, int idle_timeout_sec,
     return 0;
 }
 
+// 关闭空闲的 连接
 void* Acceptor::CloseIdleConnections(void* arg) {
     Acceptor* am = static_cast<Acceptor*>(arg);
     std::vector<SocketId> checking_fds;
@@ -238,6 +241,7 @@ void Acceptor::ListConnections(std::vector<SocketId>* conn_list) {
     return ListConnections(conn_list, std::numeric_limits<size_t>::max());
 }
 
+// 该函数为建立新连接处理函数
 void Acceptor::OnNewConnectionsUntilEAGAIN(Socket* acception) {
     while (1) {
         struct sockaddr in_addr;
@@ -271,7 +275,11 @@ void Acceptor::OnNewConnectionsUntilEAGAIN(Socket* acception) {
         options.fd = in_fd;
         options.remote_side = butil::EndPoint(*(sockaddr_in*)&in_addr);
         options.user = acception->user();
+
+        // ，因为当前为建立行连接的socket，所以设置为读取的事件。 设置当前FD的读事件发生处理函数
         options.on_edge_triggered_events = InputMessenger::OnNewMessages;
+
+        // 新的sockt事件通过fd取模事件分发器总数。因为事件分发器中，每个分发器中都有epollo。具体在Socket：：ResetFileDescriptor 中调用的GetGlobalEventDispatcher中
         options.initial_ssl_ctx = am->_ssl_ctx;
         if (Socket::Create(options, &socket_id) != 0) {
             LOG(ERROR) << "Fail to create Socket";

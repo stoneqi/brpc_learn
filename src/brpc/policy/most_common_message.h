@@ -1,3 +1,11 @@
+/*
+ * @Author: your name
+ * @Date: 2020-12-14 12:09:04
+ * @LastEditTime: 2021-01-15 16:12:36
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: /incubator-brpc/src/brpc/policy/most_common_message.h
+ */
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information

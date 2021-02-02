@@ -58,6 +58,7 @@ public:
     int CreateSocket(const SocketOptions& opt, SocketId* id) {
         SocketOptions sock_opt = opt;
         sock_opt.health_check_interval_s = FLAGS_health_check_interval;
+        // g_messenger->Create
         return get_client_side_messenger()->Create(sock_opt, id);
     }
 };
@@ -68,10 +69,12 @@ static void CreateClientSideSocketMap() {
     options.socket_creator = new GlobalSocketCreator;
     options.idle_timeout_second_dynamic = &FLAGS_idle_timeout_second;
     options.defer_close_second_dynamic = &FLAGS_defer_close_second;
+    // socket初始化
     if (socket_map->Init(options) != 0) {
         LOG(FATAL) << "Fail to init SocketMap";
         exit(1);
     }
+    // 原子存储 到 g_socket_map 全局变量
     g_socket_map.store(socket_map, butil::memory_order_release);
 }
 
@@ -81,8 +84,11 @@ SocketMap* get_client_side_socket_map() {
     return g_socket_map.load(butil::memory_order_consume);
 }
 SocketMap* get_or_new_client_side_socket_map() {
+    // 新建一个 input_messenger
     get_or_new_client_side_messenger();
+    // 异步
     pthread_once(&g_socket_map_init, CreateClientSideSocketMap);
+    // 保证 g_socket_map 读取到最新的值
     return g_socket_map.load(butil::memory_order_consume);
 }
 
@@ -183,6 +189,8 @@ int SocketMap::Init(const SocketMapOptions& options) {
         LOG(ERROR) << "Fail to init _map";
         return -1;
     }
+
+    // idle_timeout_second_dynamic 设置了会开启线程监听连接
     if (_options.idle_timeout_second_dynamic != NULL ||
         _options.idle_timeout_second > 0) {
         if (bthread_start_background(&_close_idle_thread, NULL,
@@ -213,6 +221,7 @@ int SocketMap::Insert(const SocketMapKey& key, SocketId* id,
                       const std::shared_ptr<SocketSSLContext>& ssl_ctx) {
     std::unique_lock<butil::Mutex> mu(_mutex);
     SingleConnection* sc = _map.seek(key);
+    // 第一个为空
     if (sc) {
         if (!sc->socket->Failed() ||
             sc->socket->health_check_interval() > 0/*HC enabled*/) {
@@ -232,6 +241,9 @@ int SocketMap::Insert(const SocketMapKey& key, SocketId* id,
     SocketOptions opt;
     opt.remote_side = key.peer.addr;
     opt.initial_ssl_ctx = ssl_ctx;
+    //socket_creator  GlobalSocketCreator
+
+    // 创建一个socket tmp_id 为生成的 scoketID ,此时socket并未绑定fd
     if (_options.socket_creator->CreateSocket(opt, &tmp_id) != 0) {
         PLOG(FATAL) << "Fail to create socket to " << key.peer;
         return -1;
@@ -239,12 +251,15 @@ int SocketMap::Insert(const SocketMapKey& key, SocketId* id,
     // Add a reference to make sure that sc->socket is always accessible. Not
     // use SocketUniquePtr which cannot put into containers before c++11.
     // The ref will be removed at entry's removal.
+    // 增加一个引用
     SocketUniquePtr ptr;
     if (Socket::Address(tmp_id, &ptr) != 0) {
         LOG(FATAL) << "Fail to address SocketId=" << tmp_id;
         return -1;
     }
     SingleConnection new_sc = { 1, ptr.release(), 0 };
+
+    // socket 插入到map ,此时 socket 还是没有fd的
     _map[key] = new_sc;
     *id = tmp_id;
     bool need_to_create_bvar = false;
