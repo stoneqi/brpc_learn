@@ -65,7 +65,9 @@ inline ExecutionQueueVars* get_execq_vars() {
     return butil::get_leaky_singleton<ExecutionQueueVars>();
 }
 
+// wait-free插入
 void ExecutionQueueBase::start_execute(TaskNode* node) {
+    // 设置节点信息
     node->next = TaskNode::UNCONNECTED;
     node->status = UNEXECUTED;
     node->iterated = false;
@@ -77,26 +79,35 @@ void ExecutionQueueBase::start_execute(TaskNode* node) {
         // point, we think it's just fine.
         _high_priority_tasks.fetch_add(1, butil::memory_order_relaxed);
     }
+    // 原子任务节点交换
     TaskNode* const prev_head = _head.exchange(node, butil::memory_order_release);
+    // 头节点不为空，则连在链表后直接返回
     if (prev_head != NULL) {
+        // 头插法
         node->next = prev_head;
         return;
     }
+
+    // 插入节点为第一个节点时处理逻辑，下面这部分只会有一个线程执行
     // Get the right to execute the task, start a bthread to avoid deadlock
     // or stack overflow
+    // 置为空
     node->next = NULL;
     node->q = this;
 
+    // 参数
     ExecutionQueueVars* const vars = get_execq_vars();
     vars->execq_active_count << 1;
     if (node->in_place) {
         int niterated = 0;
+        // 先消费当前TaskNode
         _execute(node, node->high_priority, &niterated);
         TaskNode* tmp = node;
         // return if no more
         if (node->high_priority) {
             _high_priority_tasks.fetch_sub(niterated, butil::memory_order_relaxed);
         }
+        // 没有任务直接返回
         if (!_more_tasks(tmp, &tmp, !node->iterated)) {
             vars->execq_active_count << -1;
             return_task_node(node);
@@ -104,6 +115,8 @@ void ExecutionQueueBase::start_execute(TaskNode* node) {
         }
     }
 
+    // 还有任务则开启 bthread 去循环消费TaskNode
+    
     if (nullptr == _options.executor) {
         bthread_t tid;
         // We start the execution thread in background instead of foreground as
@@ -116,6 +129,7 @@ void ExecutionQueueBase::start_execute(TaskNode* node) {
             _execute_tasks(node);
         }
     } else {
+        // executor 存在则把任务提交到具体的 _execute_tasks 中
         if (_options.executor->submit(_execute_tasks, node) != 0) {
             PLOG(FATAL) << "Fail to submit task";
             _execute_tasks(node);
@@ -347,12 +361,14 @@ int ExecutionQueueBase::create(uint64_t* id, const ExecutionQueueOptions* option
     }
 
     slot_id_t slot;
+    // 资源池获得一个资源
     ExecutionQueueBase* const m = butil::get_resource(&slot, Forbidden());
     if (BAIDU_LIKELY(m != NULL)) {
         m->_execute_func = execute_func;
         m->_clear_func = clear_func;
         m->_meta = meta;
         m->_type_specific_function = type_specific_function;
+        // head 为任务队列的头节点
         CHECK(m->_head.load(butil::memory_order_relaxed) == NULL);
         CHECK_EQ(0, m->_high_priority_tasks.load(butil::memory_order_relaxed));
         ExecutionQueueOptions opt;
@@ -361,9 +377,11 @@ int ExecutionQueueBase::create(uint64_t* id, const ExecutionQueueOptions* option
         }
         m->_options = opt;
         m->_stopped.store(false, butil::memory_order_relaxed);
+        // 创建一个ID
         m->_this_id = make_id(
                 _version_of_vref(m->_versioned_ref.fetch_add(
                                     1, butil::memory_order_release)), slot);
+        // ID 赋值       
         *id = m->_this_id;
         get_execq_vars()->execq_count << 1;
         return 0;

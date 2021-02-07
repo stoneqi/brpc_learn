@@ -293,15 +293,18 @@ public:
         if (stopped()) {
             return EINVAL;
         }
+        // 新建节点
         TaskNode* node = allocate_node();
         if (BAIDU_UNLIKELY(node == NULL)) {
             return ENOMEM;
         }
+        // 分配内存
         void* const mem = allocator::allocate(node);
         if (BAIDU_UNLIKELY(!mem)) {
             return_task_node(node);
             return ENOMEM;
         }
+        // 内存上初始化
         new (mem) T(task);
         node->stop_task = false;
         TaskOptions opt;
@@ -356,6 +359,7 @@ inline int execution_queue_execute(ExecutionQueueId<T> id,
                        typename butil::add_const_reference<T>::type task,
                        const TaskOptions* options,
                        TaskHandle* handle) {
+    // 根据ID获得任务队列
     typename ExecutionQueue<T>::scoped_ptr_t 
         ptr = ExecutionQueue<T>::address(id);
     if (ptr != NULL) {

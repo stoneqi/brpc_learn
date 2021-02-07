@@ -60,9 +60,12 @@ namespace butil {
 // Memory is allocated in blocks, memory size of a block will not exceed:
 //   min(ResourcePoolBlockMaxSize<T>::value,
 //       ResourcePoolBlockMaxItem<T>::value * sizeof(T))
+// 一个 Block 最大大小
 template <typename T> struct ResourcePoolBlockMaxSize {
     static const size_t value = 64 * 1024; // bytes
 };
+
+// Block 最多的数量
 template <typename T> struct ResourcePoolBlockMaxItem {
     static const size_t value = 256;
 };

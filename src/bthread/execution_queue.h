@@ -27,12 +27,15 @@
 
 namespace bthread {
 
+// MPSC queue 多生产者单消费者
 // ExecutionQueue is a special wait-free MPSC queue of which the consumer thread
 // is auto started by the execute operation and auto quits if there are no more 
 // tasks, in another word there isn't a daemon bthread waiting to consume tasks.
 
 template <typename T> struct ExecutionQueueId;
 template <typename T> class ExecutionQueue;
+
+// 任务节点
 struct TaskNode;
 class ExecutionQueueBase;
 
@@ -155,6 +158,7 @@ struct ExecutionQueueOptions {
 // the default options. 
 // Returns 0 on success, errno otherwise
 // NOTE: type |T| can be non-POD but must be copy-constructible
+// 启动一个ExecutionQueue ，其中 execute 为单独的消费者。
 template <typename T>
 int execution_queue_start(
         ExecutionQueueId<T>* id, 

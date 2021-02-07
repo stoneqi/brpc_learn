@@ -82,6 +82,7 @@ public:
     };
     
     // Schedule a task into this bucket.
+    // abstime 为未来发生的时间点
     // Returns the TaskId and if it has the nearest run time.
     ScheduleResult schedule(void (*fn)(void*), void* arg,
                             const timespec& abstime);
@@ -202,9 +203,13 @@ TimerThread::Bucket::schedule(void (*fn)(void*), void* arg,
     task->task_id = id;
     bool earlier = false;
     {
+        // 加锁
         BAIDU_SCOPED_LOCK(_mutex);
         task->next = _task_head;
         _task_head = task;
+
+        // 发生时间小于最近的时间点，找到最近需要运行的时间点。
+        // 找到最小的  最近需要运行的时间点
         if (task->run_time < _nearest_run_time) {
             _nearest_run_time = task->run_time;
             earlier = true;
@@ -220,22 +225,29 @@ TimerThread::TaskId TimerThread::schedule(
         // Not add tasks when TimerThread is about to stop.
         return INVALID_TASK_ID;
     }
+
+    // hash到固定的_buckets中，并执行其 schedule 方法
     // Hashing by pthread id is better for cache locality.
     const Bucket::ScheduleResult result = 
         _buckets[butil::fmix64(pthread_numeric_id()) % _options.num_buckets]
         .schedule(fn, arg, abstime);
+
+    // 如果是更早的
     if (result.earlier) {
         bool earlier = false;
         const int64_t run_time = butil::timespec_to_microseconds(abstime);
         {
             BAIDU_SCOPED_LOCK(_mutex);
+            // 设置全局更早的运行时间
             if (run_time < _nearest_run_time) {
                 _nearest_run_time = run_time;
                 ++_nsignals;
                 earlier = true;
             }
         }
+        // 信号操作
         if (earlier) {
+            // 最多唤醒一个等待在 _nsignals上的线程
             futex_wake_private(&_nsignals, 1);
         }
     }
@@ -251,8 +263,11 @@ TimerThread::TaskId TimerThread::schedule(
 // unscheduled tasks do not occupy addititonal memory. 2730 is a large ratio
 // between timeout and latency in most RPC scenarios, this is why we don't
 // try to reuse tasks right now inside unschedule() with more complicated code.
+// 根据任务 ID 关闭Task，业务代码调用
 int TimerThread::unschedule(TaskId task_id) {
     const butil::ResourceId<Task> slot_id = slot_of_task_id(task_id);
+
+    // 根据ID 获得Task
     Task* const task = butil::address_resource(slot_id);
     if (task == NULL) {
         LOG(ERROR) << "Invalid task_id=" << task_id;
@@ -315,9 +330,10 @@ void TimerThread::run() {
 #ifdef BAIDU_INTERNAL
     logging::ComlogInitializer comlog_initializer;
 #endif
-
+    // gettimeofday()函数：获取当前时间
     int64_t last_sleep_time = butil::gettimeofday_us();
     BT_VLOG << "Started TimerThread=" << pthread_self();
+
 
     // min heap of tasks (ordered by run_time)
     std::vector<Task*> tasks;
@@ -343,7 +359,8 @@ void TimerThread::run() {
         // Clear _nearest_run_time before consuming tasks from buckets.
         // This helps us to be aware of earliest task of the new tasks before we
         // would run the consumed tasks.
-        {
+        {   
+            // 获取 设置  _nearest_run_time 为最大的时间。这样该线程不回再次被唤醒
             BAIDU_SCOPED_LOCK(_mutex);
             _nearest_run_time = std::numeric_limits<int64_t>::max();
         }
@@ -367,6 +384,8 @@ void TimerThread::run() {
         bool pull_again = false;
         while (!tasks.empty()) {
             Task* task1 = tasks[0];  // the about-to-run task
+
+            // 当前时间小于需运行时间，不做处理
             if (butil::gettimeofday_us() < task1->run_time) {  // not ready yet.
                 break;
             }
@@ -380,6 +399,7 @@ void TimerThread::run() {
             // are in descending orders, all tasks are "earliest" after every
             // insertion, and they'll grab _mutex and change _nearest_run_time
             // frequently, fortunately this is not true at most of time).
+
             {
                 BAIDU_SCOPED_LOCK(_mutex);
                 if (task1->run_time > _nearest_run_time) {
@@ -388,7 +408,10 @@ void TimerThread::run() {
                     break;
                 }
             }
+            // 当前时间大于 task1->run_time ，运行该函数然后删除
             std::pop_heap(tasks.begin(), tasks.end(), task_greater);
+
+            // 删除该Task
             tasks.pop_back();
             if (task1->run_and_delete()) {
                 ++ntriggered;
@@ -401,6 +424,8 @@ void TimerThread::run() {
 
         // The realtime to wait for.
         int64_t next_run_time = std::numeric_limits<int64_t>::max();
+
+        // 设置  next_run_time为最小时间
         if (!tasks.empty()) {
             next_run_time = tasks[0]->run_time;
         }
@@ -409,7 +434,8 @@ void TimerThread::run() {
         // task. We also use the _nsignal to make sure that if new task 
         // is earlier that the realtime that we wait for, we'll wake up.
         int expected_nsignals = 0;
-        {
+        {  
+            // 最小运行时间大于_nearest_run_time 继续重复执行
             BAIDU_SCOPED_LOCK(_mutex);
             if (next_run_time > _nearest_run_time) {
                 // a task is earlier that what we would wait for.
@@ -428,6 +454,8 @@ void TimerThread::run() {
             ptimeout = &next_timeout;
         }
         busy_seconds += (now - last_sleep_time) / 1000000.0;
+
+        // 等待被唤醒
         futex_wait_private(&_nsignals, expected_nsignals, ptimeout);
         last_sleep_time = butil::gettimeofday_us();
     }

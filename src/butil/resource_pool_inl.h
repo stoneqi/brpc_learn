@@ -64,6 +64,7 @@ struct ResourcePoolFreeChunk {
     ResourceId<T> ids[NITEM];
 };
 // for gcc 3.4.5
+// 柔性数组，节省内存
 template <typename T> 
 struct ResourcePoolFreeChunk<T, 0> {
     size_t nfree;
@@ -118,6 +119,10 @@ public:
 
         Block() : nitem(0) {}
     };
+
+    // BlockGroup  中包含多个 Block nblock为对应数量。全局只有一个
+
+    // Block 包含 BLOCK_NITEM 个 T 结构， 每个线程中包含线程本地变量
 
     // A Resource addresses at most RP_MAX_BLOCK_NGROUP BlockGroups,
     // each BlockGroup addresses at most RP_GROUP_NBLOCK blocks. So a
@@ -179,7 +184,8 @@ public:
             *id = free_id;                                              \
             BAIDU_RESOURCE_POOL_FREE_ITEM_NUM_SUB1;                   \
             return unsafe_address_resource(free_id);                    \
-        }                                                               \
+        }
+        /*  _cur_block 数量未超过 BLOCK_NITEM 直接new一个 */                 \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
@@ -241,9 +247,13 @@ public:
         }
 
     private:
+        // 总资源池
         ResourcePool* _pool;
+        // 当前线程本地 block
         Block* _cur_block;
         size_t _cur_block_index;
+
+        // 当前释放的_cur_free
         FreeChunk _cur_free;
     };
 
@@ -358,13 +368,18 @@ public:
     }
 
     static inline ResourcePool* singleton() {
+        // 读取
         ResourcePool* p = _singleton.load(butil::memory_order_consume);
+        
+        // 不存在
         if (p) {
             return p;
         }
+        
         pthread_mutex_lock(&_singleton_mutex);
         p = _singleton.load(butil::memory_order_consume);
         if (!p) {
+            //
             p = new ResourcePool();
             _singleton.store(p, butil::memory_order_release);
         } 
@@ -508,10 +523,13 @@ private:
     bool pop_free_chunk(FreeChunk& c) {
         // Critical for the case that most return_object are called in
         // different threads of get_object.
+
+        // 加锁前检测
         if (_free_chunks.empty()) {
             return false;
         }
         pthread_mutex_lock(&_free_chunks_mutex);
+        // 加锁后检测， 防止加锁过程中被分配完
         if (_free_chunks.empty()) {
             pthread_mutex_unlock(&_free_chunks_mutex);
             return false;
