@@ -1,7 +1,8 @@
 # Ignore all files without extension.
 # If you need to git-add a file without extension, add -f
 *
-
+!*.*
+!*/
 
 *.o
 *.a
@@ -17,7 +18,6 @@
 build/
 
 # Ignore hidden files
-.*
 *.swp
 
 # Ignore auto-generated files
