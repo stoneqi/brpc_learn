@@ -623,7 +623,7 @@ private:
 
     // ResourcePool
     static butil::static_atomic<BlockGroup*> _block_groups[RP_MAX_BLOCK_NGROUP];
-    // 保存了多个释放资源ID的 DynamicFreeChunk
+    // 保存了多个释放资源ID的 DynamicFreeChunk ,每个 DynamicFreeChunk 里保存的数目可能不一样
     std::vector<DynamicFreeChunk*> _free_chunks;
     pthread_mutex_t _free_chunks_mutex;
 
