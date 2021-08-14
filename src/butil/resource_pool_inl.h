@@ -279,6 +279,7 @@ public:
         FreeChunk _cur_free;
     };
 
+    // 根据ID获得资源地址。
     // 不安全，未验证根据ResourceID计算出的索引是否溢出，速度快
     static inline T* unsafe_address_resource(ResourceId<T> id) {
         const size_t block_index = id.value / BLOCK_NITEM;
