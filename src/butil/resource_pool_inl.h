@@ -170,6 +170,7 @@ public:
             _cur_free.nfree = 0;
         }
 
+        // 当前线程关闭时析构 仅需归还_cur_free即可，其他数据本地都有管理
         ~LocalPool() {
             // Add to global _free_chunks if there're some free resources
             // 归还 当前 cur free
