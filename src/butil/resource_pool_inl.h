@@ -94,6 +94,7 @@ static const size_t RP_MAX_BLOCK_NGROUP = 65536;
 static const size_t RP_GROUP_NBLOCK_NBIT = 16;
 // GROUP_NBLOCK 数目
 static const size_t RP_GROUP_NBLOCK = (1UL << RP_GROUP_NBLOCK_NBIT);
+// 初始化 FREE_LIST 大小
 static const size_t RP_INITIAL_FREE_LIST_SIZE = 1024;
 
 // 该类用于计算一个block能存下几个T
