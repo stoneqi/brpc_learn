@@ -319,6 +319,7 @@ public:
         return NULL;
     }
 
+    // 获得一个新的资源，最终调用 LocalPool 的 get方法
     inline T* get_resource(ResourceId<T>* id) {
         LocalPool* lp = get_or_new_local_pool();
         if (__builtin_expect(lp != NULL, 1)) {
