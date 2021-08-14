@@ -234,6 +234,7 @@ public:
         return NULL;                                                    \
  
 
+        // get 一个 资源 都是调用内部 宏实现
         inline T* get(ResourceId<T>* id) {
             BAIDU_RESOURCE_POOL_GET();
         }
