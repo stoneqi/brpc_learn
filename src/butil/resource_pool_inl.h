@@ -116,6 +116,7 @@ public:
     // global list(_free_chunks).
     // 定义Block中释放的 元素保存数组，保存的仅为ID值
     typedef ResourcePoolFreeChunk<T, FREE_CHUNK_NITEM>      FreeChunk;
+    // 柔性数组
     typedef ResourcePoolFreeChunk<T, 0> DynamicFreeChunk;
 
     // When a thread needs memory, it allocates a Block. To improve locality,
