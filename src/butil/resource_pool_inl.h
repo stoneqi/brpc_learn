@@ -457,9 +457,11 @@ private:
                     _block_groups[ngroup - 1].load(butil::memory_order_consume);
                 const size_t block_index =
                     g->nblock.fetch_add(1, butil::memory_order_relaxed);
+                // 未超过每个GROUP_BLOCK 可存放block数，直接插入
                 if (block_index < RP_GROUP_NBLOCK) {
                     g->blocks[block_index].store(
                         new_block, butil::memory_order_release);
+                    // 
                     *index = (ngroup - 1) * RP_GROUP_NBLOCK + block_index;
                     return new_block;
                 }
