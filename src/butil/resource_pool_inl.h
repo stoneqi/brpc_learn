@@ -202,7 +202,7 @@ public:
         /* Fetch a FreeChunk from global.                               \
            TODO: Popping from _free needs to copy a FreeChunk which is  \
            costly, but hardly impacts amortized performance. */         \
-        /* 从全局的 free_chunk 中获取一个内存快*/                                  \
+        /*  从全局的 free_chunk 中获取一个FreeChunk， 通过复制的方式覆盖本地的cur_free 成本过高。*/                                  \
         if (_pool->pop_free_chunk(_cur_free)) {                         \
             --_cur_free.nfree;                                          \
             const ResourceId<T> free_id =  _cur_free.ids[_cur_free.nfree]; \
@@ -210,7 +210,7 @@ public:
             BAIDU_RESOURCE_POOL_FREE_ITEM_NUM_SUB1;                   \
             return unsafe_address_resource(free_id);                    \
         }
-        /*  _cur_block 数量未超过 BLOCK_NITEM 直接new一个 */                 \
+        /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */                 \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
