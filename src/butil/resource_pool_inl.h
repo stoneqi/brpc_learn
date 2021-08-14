@@ -442,6 +442,7 @@ private:
 
     // Create a Block and append it to right-most BlockGroup.
     static Block* add_block(size_t* index) {
+        // 新建一个 block
         Block* const new_block = new(std::nothrow) Block;
         if (NULL == new_block) {
             return NULL;
