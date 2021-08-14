@@ -470,6 +470,7 @@ private:
                 // 不能插入，恢复原样。
                 g->nblock.fetch_sub(1, butil::memory_order_relaxed);
             }
+        // 新增个block_group
         } while (add_block_group(ngroup));
 
         // Fail to add_block_group.
