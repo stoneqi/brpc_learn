@@ -260,7 +260,7 @@ public:
         size_t _cur_block_index;
 
         // 当前释放的_cur_free
-        
+        // 保存释放的资源T，保存的是 ResourceId。 因为资源释放时会有稀疏内存，方便查找释放的资源重新分配
         FreeChunk _cur_free;
     };
 
