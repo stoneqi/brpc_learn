@@ -92,7 +92,7 @@ struct ResourcePoolInfo {
 static const size_t RP_MAX_BLOCK_NGROUP = 65536;
 // 偏移量，计算GROUP index时偏移16位。 ResourceID 16位前为 GROUP index， 
 static const size_t RP_GROUP_NBLOCK_NBIT = 16;
-
+// GROUP_NBLOCK 数目
 static const size_t RP_GROUP_NBLOCK = (1UL << RP_GROUP_NBLOCK_NBIT);
 static const size_t RP_INITIAL_FREE_LIST_SIZE = 1024;
 
