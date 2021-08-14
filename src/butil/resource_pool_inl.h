@@ -191,7 +191,7 @@ public:
         // we don't want.
 #define BAIDU_RESOURCE_POOL_GET(CTOR_ARGS)                              \
         /* Fetch local free id */                                  \
-        /* 第一级 判断当前 cur_free是否有释放的资源 */                         \
+        /* 第一级 判断当前 cur_free是否有释放的资源，未用参数实例化？ */                         \
         if (_cur_free.nfree) {                                          \
             /* 直接使用已释放的 资源ID， nfree-- */                                  \
             const ResourceId<T> free_id = _cur_free.ids[--_cur_free.nfree]; \
