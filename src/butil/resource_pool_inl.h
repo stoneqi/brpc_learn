@@ -278,7 +278,7 @@ public:
         ResourcePool* _pool;
         // 当前线程本地 block
         Block* _cur_block;
-        // 当前 block 索引
+        // 当前 block 在 BlockGroup 中的索引，包括了 BlockGroup 在 _block_groups 数组中的索引
         size_t _cur_block_index;
 
         // 当前释放的_cur_free
