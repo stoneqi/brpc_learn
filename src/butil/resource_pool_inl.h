@@ -277,13 +277,16 @@ public:
 
         // 计算索引， id.value 为内存大小指标。例如 T为8 64/8=8
         const size_t block_index = id.value / BLOCK_NITEM;
-        // ResourceId 前16位为group_index, 后16位为 block_index，一个block 多个size 最大为 64*1024= 2^16 
+        // ResourceId 前16位为group_index, 中间8位为 block_index，一个block 多个size 最大为 64*1024= 2^16 
         const size_t group_index = (block_index >> RP_GROUP_NBLOCK_NBIT);
 
         if (__builtin_expect(group_index < RP_MAX_BLOCK_NGROUP, 1)) {
+
+            // 获取 BlockGroup
             BlockGroup* bg =
                 _block_groups[group_index].load(butil::memory_order_consume);
             if (__builtin_expect(bg != NULL, 1)) {
+                // 获取 block
                 Block* b = bg->blocks[block_index & (RP_GROUP_NBLOCK - 1)]
                            .load(butil::memory_order_consume);
                 if (__builtin_expect(b != NULL, 1)) {
