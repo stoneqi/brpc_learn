@@ -179,6 +179,8 @@ public:
             _pool->clear_from_destructor_of_local_pool();
         }
 
+        // 删除 localPool 需要传入 LocalPool地址，静态方法，
+        // 提供实例化内部类删除自己的方法
         static void delete_local_pool(void* arg) {
             delete(LocalPool*)arg;
         }
