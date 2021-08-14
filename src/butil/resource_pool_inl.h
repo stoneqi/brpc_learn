@@ -120,6 +120,7 @@ public:
     // When a thread needs memory, it allocates a Block. To improve locality,
     // items in the Block are only used by the thread.
     // To support cache-aligned objects, align Block.items by cacheline.
+    // __attribute__((aligned(n)))：此属性指定了指定类型的变量的最小对齐(以字节为单位)。如果结构中有成员的长度大于n，则按照最大成员的长度来对齐。
     struct BAIDU_CACHELINE_ALIGNMENT Block {
         char items[sizeof(T) * BLOCK_NITEM];
         size_t nitem;
