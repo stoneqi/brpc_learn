@@ -451,6 +451,7 @@ private:
         size_t ngroup;
         do {
             ngroup = _ngroup.load(butil::memory_order_acquire);
+            // 判断是否有需要增加 BlockGroup
             if (ngroup >= 1) {
                 BlockGroup* const g =
                     _block_groups[ngroup - 1].load(butil::memory_order_consume);
