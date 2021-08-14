@@ -133,7 +133,7 @@ public:
     // __attribute__((aligned(n)))：此属性指定了指定类型的变量的最小对齐(以字节为单位)。如果结构中有成员的长度大于n，则按照最大成员的长度来对齐。
     struct BAIDU_CACHELINE_ALIGNMENT Block {
         char items[sizeof(T) * BLOCK_NITEM];
-        size_t nitem;
+        size_t nitem; // 当前已使用的 索引位置
 
         Block() : nitem(0) {}
     };
@@ -213,7 +213,7 @@ public:
         /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */                 \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
-            /* 计算ResourceID 值 ， */   \
+            /* 计算ResourceID 值 ，当前 block的索引 */   \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
             T* p = new ((T*)_cur_block->items + _cur_block->nitem) T CTOR_ARGS; \
             if (!ResourcePoolValidator<T>::validate(p)) {               \
