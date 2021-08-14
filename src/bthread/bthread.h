@@ -42,6 +42,7 @@ __BEGIN_DECLS
 // Returns 0 on success, errno otherwise.
 
 // __restrict 主要用来修饰指针指向的内存不能被别的指针引用
+// id 外界传入指针
 extern int bthread_start_urgent(bthread_t* __restrict tid,
                                 const bthread_attr_t* __restrict attr,
                                 void * (*fn)(void*),
