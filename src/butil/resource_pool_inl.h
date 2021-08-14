@@ -213,6 +213,7 @@ public:
         /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */                 \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
+            /* 计算ResourceID 值 ， */   \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
             T* p = new ((T*)_cur_block->items + _cur_block->nitem) T CTOR_ARGS; \
             if (!ResourcePoolValidator<T>::validate(p)) {               \
