@@ -91,6 +91,7 @@ static const size_t RP_INITIAL_FREE_LIST_SIZE = 1024;
 
 template <typename T>
 class ResourcePoolBlockItemNum {
+    // Block 存储的 T 资源数量
     static const size_t N1 = ResourcePoolBlockMaxSize<T>::value / sizeof(T);
     static const size_t N2 = (N1 < 1 ? 1 : N1);
 public:
