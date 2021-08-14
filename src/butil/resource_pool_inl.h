@@ -130,6 +130,7 @@ public:
     // A Resource addresses at most RP_MAX_BLOCK_NGROUP BlockGroups,
     // each BlockGroup addresses at most RP_GROUP_NBLOCK blocks. So a
     // resource addresses at most RP_MAX_BLOCK_NGROUP * RP_GROUP_NBLOCK Blocks.
+    // RP_MAX_BLOCK_NGROUP 最多的BlockGroup个数
     struct BlockGroup {
         butil::atomic<size_t> nblock;
         // RP_GROUP_NBLOCK 65536
