@@ -279,6 +279,7 @@ public:
         FreeChunk _cur_free;
     };
 
+    // 不安全，未验证根据ResourceID计算出的索引是否溢出，速度快
     static inline T* unsafe_address_resource(ResourceId<T> id) {
         const size_t block_index = id.value / BLOCK_NITEM;
         return (T*)(_block_groups[(block_index >> RP_GROUP_NBLOCK_NBIT)]
@@ -288,6 +289,7 @@ public:
                id.value - block_index * BLOCK_NITEM;
     }
 
+    // 速度慢，判断移出
     static inline T* address_resource(ResourceId<T> id) {
 
         // 计算索引， id.value 为内存大小指标。例如 T为8 64/8=8
