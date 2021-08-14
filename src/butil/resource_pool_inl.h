@@ -224,9 +224,10 @@ public:
             return p;                                                   \
         }                                                               \
         /* Fetch a Block from global */                                 \
-        /* 同时修改了 _cur_block 和 _cur_block_index */                                 \
+        /* 同时修改了 _cur_block 和 _cur_block_index */                    \
         _cur_block = add_block(&_cur_block_index);                      \
         if (_cur_block != NULL) {                                       \
+            /* 计算ResourceID 值 ，当前 block的总索引 * BLOCK_NITEM  */   \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
             T* p = new ((T*)_cur_block->items + _cur_block->nitem) T CTOR_ARGS; \
             if (!ResourcePoolValidator<T>::validate(p)) {               \
