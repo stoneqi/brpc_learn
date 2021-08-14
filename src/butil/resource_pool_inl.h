@@ -267,7 +267,7 @@ public:
         }
 
     private:
-        // 总资源池
+        // 指向资源池，内存不足是从该pool的 Block group 中获取。
         ResourcePool* _pool;
         // 当前线程本地 block
         Block* _cur_block;
@@ -275,7 +275,7 @@ public:
         size_t _cur_block_index;
 
         // 当前释放的_cur_free
-        // 保存释放的资源T，保存的是 ResourceId。 因为资源释放时会有稀疏内存，方便查找释放的资源重新分配
+        // 保存当前block释放的资源T的ResourceId。 因为资源释放时会有稀疏内存，方便查找释放的资源重新分配
         FreeChunk _cur_free;
     };
 
