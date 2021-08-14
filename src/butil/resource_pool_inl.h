@@ -569,7 +569,7 @@ private:
             return false;
         }
         pthread_mutex_lock(&_free_chunks_mutex);
-        // 加锁后检测， 防止加锁过程中被分配完
+        // 加锁后检测 _free_chunks， 防止加锁过程中被分配完
         if (_free_chunks.empty()) {
             pthread_mutex_unlock(&_free_chunks_mutex);
             return false;
