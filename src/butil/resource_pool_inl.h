@@ -257,6 +257,7 @@ public:
 
 #undef BAIDU_RESOURCE_POOL_GET
 
+        // 释放资源到资源池
         inline int return_resource(ResourceId<T> id) {
             // Return to local free list
             if (_cur_free.nfree < ResourcePool::free_chunk_nitem()) {
