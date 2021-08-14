@@ -43,6 +43,7 @@
 
 namespace butil {
     
+// 使用 ResourceId 来管理对应的资源
 template <typename T>
 struct ResourceId {
     uint64_t value;
@@ -58,6 +59,8 @@ struct ResourceId {
     }
 };
 
+
+// 保存已释放的 T 的 ID值
 template <typename T, size_t NITEM> 
 struct ResourcePoolFreeChunk {
     size_t nfree;
