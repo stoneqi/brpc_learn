@@ -114,6 +114,7 @@ public:
 
     // Free identifiers are batched in a FreeChunk before they're added to
     // global list(_free_chunks).
+    // 定义Block中释放的 元素保存数组，保存的仅为ID值
     typedef ResourcePoolFreeChunk<T, FREE_CHUNK_NITEM>      FreeChunk;
     typedef ResourcePoolFreeChunk<T, 0> DynamicFreeChunk;
 
