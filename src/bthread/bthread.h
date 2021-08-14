@@ -40,6 +40,8 @@ __BEGIN_DECLS
 // `tid'. Switch to the new thread and schedule old thread to run. Use this
 // function when the new thread is more urgent.
 // Returns 0 on success, errno otherwise.
+
+// __restrict 主要用来修饰指针指向的内存不能被别的指针引用
 extern int bthread_start_urgent(bthread_t* __restrict tid,
                                 const bthread_attr_t* __restrict attr,
                                 void * (*fn)(void*),
