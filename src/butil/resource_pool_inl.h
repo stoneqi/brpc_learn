@@ -132,6 +132,7 @@ public:
     // resource addresses at most RP_MAX_BLOCK_NGROUP * RP_GROUP_NBLOCK Blocks.
     struct BlockGroup {
         butil::atomic<size_t> nblock;
+        // RP_GROUP_NBLOCK 65536
         butil::atomic<Block*> blocks[RP_GROUP_NBLOCK];
 
         BlockGroup() : nblock(0) {
