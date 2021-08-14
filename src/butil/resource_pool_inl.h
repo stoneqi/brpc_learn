@@ -274,7 +274,10 @@ public:
     }
 
     static inline T* address_resource(ResourceId<T> id) {
+
+        // 计算索引， id.value 为内存大小指标。例如 T为8 64/8=8
         const size_t block_index = id.value / BLOCK_NITEM;
+        // ResourceId 前16位为group_index, 后16位为 block_index， 64*1024= 2^16 
         const size_t group_index = (block_index >> RP_GROUP_NBLOCK_NBIT);
         if (__builtin_expect(group_index < RP_MAX_BLOCK_NGROUP, 1)) {
             BlockGroup* bg =
