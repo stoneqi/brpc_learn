@@ -93,6 +93,7 @@ static const size_t RP_INITIAL_FREE_LIST_SIZE = 1024;
 // 如果T大于64*1024 则，存储一个，否则按照 N1计算。 
 // 同时，一个block最大存储256个元素
 // 在 Block类中使用
+// 注意该类在编译时会直接计算出来，运行时为常量
 template <typename T>
 class ResourcePoolBlockItemNum {
     // Block 的内存大小为 64 * 1024; 元素大于1024 则该block只保存一个。
