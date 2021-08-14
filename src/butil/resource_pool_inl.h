@@ -104,6 +104,7 @@ public:
 template <typename T>
 class BAIDU_CACHELINE_ALIGNMENT ResourcePool {
 public:
+    // block 保存资源数目
     static const size_t BLOCK_NITEM = ResourcePoolBlockItemNum<T>::value;
     static const size_t FREE_CHUNK_NITEM = BLOCK_NITEM;
 
