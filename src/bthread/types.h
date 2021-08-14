@@ -92,6 +92,7 @@ typedef struct bthread_attr_t {
     // bthread 栈内存
     bthread_stacktype_t stack_type;
     // 属性tag
+    // 
     bthread_attrflags_t flags;
     bthread_keytable_pool_t* keytable_pool;
 
