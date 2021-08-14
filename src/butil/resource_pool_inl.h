@@ -367,7 +367,7 @@ public:
         return info;
     }
 
-    // 单例化
+    // 单例化 double check
     static inline ResourcePool* singleton() {
         // 读取
         ResourcePool* p = _singleton.load(butil::memory_order_consume);
