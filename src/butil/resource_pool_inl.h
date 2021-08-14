@@ -209,8 +209,8 @@ public:
             *id = free_id;                                              \
             BAIDU_RESOURCE_POOL_FREE_ITEM_NUM_SUB1;                   \
             return unsafe_address_resource(free_id);                    \
-        }
-        /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */                 \
+        }                                                           \
+        /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */            \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
             /* 计算ResourceID 值 ，当前 block的总索引 * BLOCK_NITEM  */   \
