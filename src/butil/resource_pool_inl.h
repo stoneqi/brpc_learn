@@ -172,6 +172,7 @@ public:
 
         ~LocalPool() {
             // Add to global _free_chunks if there're some free resources
+            // 归还 当前 cur free
             if (_cur_free.nfree) {
                 _pool->push_free_chunk(_cur_free);
             }
