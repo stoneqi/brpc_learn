@@ -95,7 +95,7 @@ class ResourcePoolBlockItemNum {
     static const size_t N1 = ResourcePoolBlockMaxSize<T>::value / sizeof(T);
     static const size_t N2 = (N1 < 1 ? 1 : N1);
 public:
-    // max(ResourcePoolBlockMaxItem<T>::value ,  N2 ) 最大256个元素
+    // min(ResourcePoolBlockMaxItem<T>::value ,  N2 ) 最大为256个元素
     static const size_t value = (N2 > ResourcePoolBlockMaxItem<T>::value ?
                                  ResourcePoolBlockMaxItem<T>::value : N2);
 };
