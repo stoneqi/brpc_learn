@@ -364,7 +364,7 @@ public:
         }
         return -1;
     }
-
+    // 清楚当前线程的资源池
     void clear_resources() {
         LocalPool* lp = _local_pool;
         if (lp) {
