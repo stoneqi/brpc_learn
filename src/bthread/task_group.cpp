@@ -57,6 +57,8 @@ const bool ALLOW_UNUSED dummy_show_per_worker_usage_in_vars =
     ::GFLAGS_NS::RegisterFlagValidator(&FLAGS_show_per_worker_usage_in_vars,
                                     pass_bool);
 
+// Thread Local Storage
+// 线程局部存储(tls)是一种机制,通过这一机制分配的变量,每个当前线程有一个该变量的实例.
 __thread TaskGroup* tls_task_group = NULL;
 // Sync with TaskMeta::local_storage when a bthread is created or destroyed.
 // During running, the two fields may be inconsistent, use tls_bls as the
