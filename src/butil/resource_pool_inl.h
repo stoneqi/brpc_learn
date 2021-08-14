@@ -578,6 +578,7 @@ private:
         _free_chunks.pop_back();
         pthread_mutex_unlock(&_free_chunks_mutex);
         c.nfree = p->nfree;
+        // 执行拷贝，传递的是 C 因此只能拷贝覆盖原来的
         memcpy(c.ids, p->ids, sizeof(*p->ids) * p->nfree);
         free(p);
         return true;
