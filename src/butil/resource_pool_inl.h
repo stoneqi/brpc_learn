@@ -461,7 +461,7 @@ private:
                 if (block_index < RP_GROUP_NBLOCK) {
                     g->blocks[block_index].store(
                         new_block, butil::memory_order_release);
-                    //  前面_GROUP_BLOCK包括的 Block数加当前的 block_index，
+                    //  前面_GROUP_BLOCK包括的Block总数加当前的 block_index，计算为cur_block_index
                     *index = (ngroup - 1) * RP_GROUP_NBLOCK + block_index;
                     return new_block;
                 }
