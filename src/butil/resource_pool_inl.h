@@ -455,6 +455,8 @@ private:
             if (ngroup >= 1) {
                 BlockGroup* const g =
                     _block_groups[ngroup - 1].load(butil::memory_order_consume);
+                
+                // 原子加1 做判断能否插入
                 const size_t block_index =
                     g->nblock.fetch_add(1, butil::memory_order_relaxed);
                 // 未超过每个GROUP_BLOCK 可存放block数，直接插入
@@ -465,6 +467,7 @@ private:
                     *index = (ngroup - 1) * RP_GROUP_NBLOCK + block_index;
                     return new_block;
                 }
+                // 
                 g->nblock.fetch_sub(1, butil::memory_order_relaxed);
             }
         } while (add_block_group(ngroup));
