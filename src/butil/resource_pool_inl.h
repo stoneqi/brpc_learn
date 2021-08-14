@@ -74,6 +74,7 @@ struct ResourcePoolFreeChunk<T, 0> {
     ResourceId<T> ids[0];
 };
 
+// 当前资源池信息统计
 struct ResourcePoolInfo {
     size_t local_pool_num;
     size_t block_group_num;
@@ -87,6 +88,7 @@ struct ResourcePoolInfo {
 #endif
 };
 
+// 
 static const size_t RP_MAX_BLOCK_NGROUP = 65536;
 static const size_t RP_GROUP_NBLOCK_NBIT = 16;
 static const size_t RP_GROUP_NBLOCK = (1UL << RP_GROUP_NBLOCK_NBIT);
