@@ -213,7 +213,7 @@ public:
         /*  _cur_block 数量未超过 BLOCK_NITEM 直接从中new一个 */                 \
         /* Fetch memory from local block */                             \
         if (_cur_block && _cur_block->nitem < BLOCK_NITEM) {            \
-            /* 计算ResourceID 值 ，当前 block的索引 */   \
+            /* 计算ResourceID 值 ，当前 block的总索引 * BLOCK_NITEM  */   \
             id->value = _cur_block_index * BLOCK_NITEM + _cur_block->nitem; \
             T* p = new ((T*)_cur_block->items + _cur_block->nitem) T CTOR_ARGS; \
             if (!ResourcePoolValidator<T>::validate(p)) {               \
@@ -280,6 +280,7 @@ public:
         // 当前线程本地 block
         Block* _cur_block;
         // 当前 block 在 BlockGroup 中的索引，包括了 BlockGroup 在 _block_groups 数组中的索引
+        // 是摊平_block_groups的总索引，比如 当前block在 第3个 BlockGroup 的 第2个  Block，每个BlockGroup有8个 index ，则 _cur_block_index为 2*8+1
         size_t _cur_block_index;
 
         // 当前释放的_cur_free
