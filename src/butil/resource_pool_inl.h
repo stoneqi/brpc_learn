@@ -91,10 +91,11 @@ static const size_t RP_INITIAL_FREE_LIST_SIZE = 1024;
 
 template <typename T>
 class ResourcePoolBlockItemNum {
-    // Block 存储的 T 资源数量
+    // Block 的内存大小为 64 * 1024; 元素大于1024 则该block只保存一个。
     static const size_t N1 = ResourcePoolBlockMaxSize<T>::value / sizeof(T);
     static const size_t N2 = (N1 < 1 ? 1 : N1);
 public:
+    // max(ResourcePoolBlockMaxItem<T>::value ,  N2 ) 最大256个元素
     static const size_t value = (N2 > ResourcePoolBlockMaxItem<T>::value ?
                                  ResourcePoolBlockMaxItem<T>::value : N2);
 };
