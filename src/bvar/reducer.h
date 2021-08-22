@@ -201,7 +201,7 @@ template <typename T, typename Op, typename InvOp>
 inline Reducer<T, Op, InvOp>& Reducer<T, Op, InvOp>::operator<<(
     typename butil::add_cr_non_integral<T>::type value) {
     // It's wait-free for most time
-    // 获得当前tls agent ， agent 用于代理当前线程的<<操作
+    // 获得当前tls agent（没有则创建） ， agent 用于代理当前线程的<<操作
     agent_type* agent = _combiner.get_or_create_tls_agent();
     if (__builtin_expect(!agent, 0)) {
         LOG(FATAL) << "Fail to create agent";
