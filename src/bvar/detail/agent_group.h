@@ -212,6 +212,8 @@ private:
     // 静态变量，在模版类中，相同的T 中使用的同一个静态变量。因此在这里，相同的Agent会使用的同一个 AgentID
     // std::deque<AgentId>、std::vector<ThreadBlock *>
     static AgentId                              _s_agent_kinds;
+
+    // resize 比较高效
     static std::deque<AgentId>                  *_s_free_ids;
 
     // 
