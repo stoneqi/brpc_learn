@@ -86,6 +86,7 @@ struct VoidOp {
 //  - T get_value();
 //  - Op op();
 //  - InvOp inv_op();
+// 执行具体的 sample函数
 template <typename R, typename T, typename Op, typename InvOp>
 class ReducerSampler : public Sampler {
 public:
