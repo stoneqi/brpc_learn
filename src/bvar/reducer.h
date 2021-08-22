@@ -66,6 +66,8 @@ namespace bvar {
 // LOG(INFO) << my_type_sum;  // "MyType{6}"
 
 // 二元操作符 ，T代表类型， OP为操作。多个T e1 Op e2 Op e3
+// 分别是数据类型T；reduce操作符Op；Op的逆向操作符InvOp，默认是VoidOp，也就是没有逆向操作符。InvOp在定时采样的时候会用到，本篇文章暂不涉及，后面解析采样相关机制的时候再详细说明。注意这三个typedef，分别定义了combiner、agent和sampler的类型，和Reducer本身的模板参数强相关。
+
 template <typename T, typename Op, typename InvOp = detail::VoidOp>
 class Reducer : public Variable {
 public:
