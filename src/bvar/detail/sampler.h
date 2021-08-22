@@ -92,6 +92,7 @@ class ReducerSampler : public Sampler {
 public:
     static const time_t MAX_SECONDS_LIMIT = 3600;
 
+    // reducer 接口 为 Bvar具体值，get value
     explicit ReducerSampler(R* reducer)
         : _reducer(reducer)
         , _window_size(1) {
