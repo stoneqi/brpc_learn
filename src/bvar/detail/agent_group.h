@@ -46,6 +46,7 @@ typedef int AgentId;
 // * don't use __builtin_expect excessively because CPU may predict the branch
 //   better than you. Only hint branches that are definitely unusual.
 
+// 一个类型全局使用一个AgentGroup ，比如int ，多个Adder都使用这一个AgentGroup
 template <typename Agent>
 class AgentGroup {
 public:
