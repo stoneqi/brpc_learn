@@ -156,6 +156,10 @@ public:
         if (NULL == _sampler) {
             // 新建 detail::ReducerSampler<Reducer, T, Op, InvOp>
             _sampler = new sampler_type(this);
+
+            // void Sampler::schedule() {
+            //     *butil::get_leaky_singleton<SamplerCollector>() << this;
+            // } 获得 SamplerCollector 单例，注入该sampler
             _sampler->schedule();
         }
         return _sampler;
