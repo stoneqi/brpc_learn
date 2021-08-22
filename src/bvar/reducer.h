@@ -154,6 +154,7 @@ public:
     
     sampler_type* get_sampler() {
         if (NULL == _sampler) {
+            // 新建 detail::ReducerSampler<Reducer, T, Op, InvOp>
             _sampler = new sampler_type(this);
             _sampler->schedule();
         }
