@@ -58,6 +58,7 @@ static bool registered_atfork = false;
 // list of Samplers. Waking through the list and call take_sample().
 // If a Sampler needs to be deleted, we just mark it as unused and the
 // deletion is taken place in the thread as well.
+// 全局采集器，定时运行
 class SamplerCollector : public bvar::Reducer<Sampler*, CombineSampler> {
 public:
     SamplerCollector()
