@@ -295,7 +295,7 @@ friend class GlobalValue<self_type>;
     }
 
     // We need this function to be as fast as possible.
-    // 获得新的agent
+    // 获得线程级的agent
     inline Agent* get_or_create_tls_agent() {
         Agent* agent = AgentGroup::get_tls_agent(_id);
         if (!agent) {
