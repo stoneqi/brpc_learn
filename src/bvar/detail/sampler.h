@@ -32,6 +32,7 @@
 namespace bvar {
 namespace detail {
 
+// 单个采样保存器
 template <typename T>
 struct Sample {
     T data;
