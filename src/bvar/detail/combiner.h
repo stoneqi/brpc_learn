@@ -343,6 +343,7 @@ private:
 
     // 用于操作全局汇总结果的锁
     mutable butil::Lock                          _lock;
+    // 用来保存汇总结果。
     ResultTp                                    _global_result;
     ResultTp                                    _result_identity;
     ElementTp                                   _element_identity;
