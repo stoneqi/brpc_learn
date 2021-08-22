@@ -212,7 +212,7 @@ friend class GlobalValue<self_type>;
 
         // 保存父combiner
         self_type *combiner;
-        // 
+        // 包装数据为一个支持多个操作的类
         ElementContainer<ElementTp> element;
     };
 
