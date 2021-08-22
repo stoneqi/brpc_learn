@@ -344,6 +344,7 @@ private:
     ResultTp                                    _global_result;
     ResultTp                                    _result_identity;
     ElementTp                                   _element_identity;
+    // 保存当前Combiner 的 Agent
     butil::LinkedList<Agent>                     _agents;
 };
 
