@@ -59,6 +59,8 @@ static bool registered_atfork = false;
 // If a Sampler needs to be deleted, we just mark it as unused and the
 // deletion is taken place in the thread as well.
 // 全局采集器，定时运行
+// 继承Reducer，支持增加 Sampler 和获取 所有Sampler等功能。
+// public bvar::Reducer<Sampler*, CombineSampler> 支持添加Sampler构成一个链表
 class SamplerCollector : public bvar::Reducer<Sampler*, CombineSampler> {
 public:
     SamplerCollector()
@@ -150,6 +152,7 @@ void SamplerCollector::run() {
     int consecutive_nosleep = 0;
     while (!_stop) {
         int64_t abstime = butil::gettimeofday_us();
+        // reset Reducer函数，获取值
         Sampler* s = this->reset();
         if (s) {
             s->InsertBeforeAsList(&root);
