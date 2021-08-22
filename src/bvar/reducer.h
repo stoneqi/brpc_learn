@@ -123,6 +123,7 @@ public:
             << "You should not call Reducer<" << butil::class_name_str<T>()
             << ", " << butil::class_name_str<Op>() << ">::get_value() when a"
             << " Window<> is used because the operator does not have inverse.";
+        // 统计所有agents的具体值
         return _combiner.combine_agents();
     }
 
