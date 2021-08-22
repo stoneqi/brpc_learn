@@ -200,6 +200,9 @@ private:
     }
     // AgentID是全局的，1 2 3 4
     // _s_tls_blocks 是线程级的，
+    // A 线程，ID为1， 会 New ThreadBlock
+    // B 线程，ID为2， 也会 New ThreadBlock。 此时A中的2为浪费的， B中的1为浪费的。
+    // 但是A释放1后，B获得ID 1,可以直接使用自己的线程级内存。
 
     // 新建和销毁 agent使用
     static pthread_mutex_t                      _s_mutex;
