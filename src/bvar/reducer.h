@@ -184,9 +184,14 @@ protected:
     }
 
 private:
-    combiner_type   _combiner;
+    // 保存了 T 和 OP
+    combiner_type   _combiner; 
+
+    // 非必须，所以为指针
     sampler_type* _sampler;
     SeriesSampler* _series_sampler;
+    
+    //逆向OP
     InvOp _inv_op;
 };
 
