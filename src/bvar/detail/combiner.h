@@ -216,7 +216,7 @@ friend class GlobalValue<self_type>;
         ElementContainer<ElementTp> element;
     };
 
-    // 全局内存管理Agent
+    // 静态函数 全局内存管理Agent
     typedef detail::AgentGroup<Agent> AgentGroup;
 
     explicit AgentCombiner(const ResultTp result_identity = ResultTp(),
