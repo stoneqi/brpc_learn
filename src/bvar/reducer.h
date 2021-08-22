@@ -186,7 +186,7 @@ protected:
     }
 
 private:
-    // 保存了 T 和 OP
+    // 保存了 T 和 OP   detail::AgentCombiner<T, T, Op> 管理所有线程级的agent
     combiner_type   _combiner; 
 
     // 非必须，所以为指针
