@@ -42,7 +42,7 @@ struct Sample {
     Sample(const T& data2, int64_t time2) : data(data2), time_us(time2) {}  
 };
 
-// Sampler则是真正和要采集的bvar一一对应的采样器结构的基类。有 ReducerSampler 和 SeriesSampler 
+// Sampler则是真正和要采集的bvar一一对应的采样器结构的基类。有 ReducerSampler 和 SeriesSampler  等
 // The base class for all samplers whose take_sample() are called periodically.
 class Sampler : public butil::LinkNode<Sampler> {
 public:
