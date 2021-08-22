@@ -115,6 +115,7 @@ public:
 
     // Note: May return non-null for unexist id, see notes on ThreadBlock
     // We need this function to be as fast as possible.
+    // 根据ID返回Agent ，id不存在的话可能返回空
     inline static Agent* get_tls_agent(AgentId id) {
         if (__builtin_expect(id >= 0, 1)) {
             if (_s_tls_blocks) {
@@ -147,6 +148,7 @@ public:
                 LOG(FATAL) << "Fail to create vector, " << berror();
                 return NULL;
             }
+            // 线程退出执行函数
             butil::thread_atexit(_destroy_tls_blocks);
         }
         // 计算当前ID所在的 ThreadBlock 块位置
