@@ -150,6 +150,7 @@ public:
         _q.elim_push(latest);
     }
 
+    // 获得 window采集到的值
     bool get_value(time_t window_size, Sample<T>* result) {
         if (window_size <= 0) {
             LOG(FATAL) << "Invalid window_size=" << window_size;
