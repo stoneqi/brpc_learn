@@ -181,6 +181,7 @@ void SamplerCollector::run() {
         int64_t now = butil::gettimeofday_us();
         _cumulated_time_us += now - abstime;
         abstime += 1000000L;
+        // 通过sleep 方式实现定时调度
         while (abstime > now) {
             ::usleep(abstime - now);
             slept = true;
