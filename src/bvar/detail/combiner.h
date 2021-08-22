@@ -161,7 +161,7 @@ public:
 friend class GlobalValue<self_type>;
     
     // 奇异递归模板模式(Curiously Recurring Template Pattern)，简称CRTP
-    // 保存当前保存的所有线程agent
+    // 一个线程级Agent
     struct Agent : public butil::LinkNode<Agent> {
         Agent() : combiner(NULL) {}
 
