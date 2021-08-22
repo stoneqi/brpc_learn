@@ -154,6 +154,7 @@ void SamplerCollector::run() {
         int64_t abstime = butil::gettimeofday_us();
         // reset Reducer函数，获取值
         Sampler* s = this->reset();
+        // 插入新的sampler
         if (s) {
             s->InsertBeforeAsList(&root);
         }
