@@ -119,7 +119,7 @@ public:
     inline static Agent* get_tls_agent(AgentId id) {
         if (__builtin_expect(id >= 0, 1)) {
             if (_s_tls_blocks) {
-                // 获得thread ID
+                // 获得 _s_tls_blocks 的index
                 const size_t block_id = (size_t)id / ELEMENTS_PER_BLOCK;
 
                 if (block_id < _s_tls_blocks->size()) {
