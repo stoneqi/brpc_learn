@@ -103,9 +103,13 @@ public:
         // Make _q ready.
         // If _window_size is larger than what _q can hold, e.g. a larger
         // Window<> is created after running of sampler, make _q larger.
+        // q 队列超出长度
         if ((size_t)_window_size + 1 > _q.capacity()) {
+
+            // 增长策略
             const size_t new_cap =
                 std::max(_q.capacity() * 2, (size_t)_window_size + 1);
+
             const size_t memsize = sizeof(Sample<T>) * new_cap;
             void* mem = malloc(memsize);
             if (NULL == mem) {
@@ -114,9 +118,11 @@ public:
             butil::BoundedQueue<Sample<T> > new_q(
                 mem, memsize, butil::OWNS_STORAGE);
             Sample<T> tmp;
+            // 迁移到新链表
             while (_q.pop(&tmp)) {
                 new_q.push(tmp);
             }
+            // 交换
             new_q.swap(_q);
         }
 
