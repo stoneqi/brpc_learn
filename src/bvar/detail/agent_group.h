@@ -198,6 +198,8 @@ private:
         }
         return *_s_free_ids;
     }
+    // AgentID是全局的，1 2 3 4
+    // _s_tls_blocks 是线程级的，
 
     // 新建和销毁 agent使用
     static pthread_mutex_t                      _s_mutex;
@@ -210,6 +212,7 @@ private:
 
     // 
     // 各线程一个 thread_local C++11与__thread gcc 的区别
+    // 会浪费一部分空间。
     static __thread std::vector<ThreadBlock *>  *_s_tls_blocks;
 };
 
