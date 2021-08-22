@@ -41,6 +41,7 @@ struct Sample {
     Sample(const T& data2, int64_t time2) : data(data2), time_us(time2) {}  
 };
 
+// 单个Reu
 // The base class for all samplers whose take_sample() are called periodically.
 class Sampler : public butil::LinkNode<Sampler> {
 public:
