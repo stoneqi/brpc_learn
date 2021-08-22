@@ -340,6 +340,8 @@ friend class GlobalValue<self_type>;
 private:
     AgentId                                     _id;
     BinaryOp                                    _op;
+
+    // 用于操作全局汇总结果的锁
     mutable butil::Lock                          _lock;
     ResultTp                                    _global_result;
     ResultTp                                    _result_identity;
