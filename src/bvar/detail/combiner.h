@@ -210,7 +210,9 @@ friend class GlobalValue<self_type>;
             element.merge_global(op, g);
         }
 
+        // 保存父combiner
         self_type *combiner;
+        // 
         ElementContainer<ElementTp> element;
     };
 
