@@ -190,7 +190,7 @@ private:
     // 非必须，所以为指针
     sampler_type* _sampler;
     SeriesSampler* _series_sampler;
-    
+
     //逆向OP
     InvOp _inv_op;
 };
@@ -199,11 +199,13 @@ template <typename T, typename Op, typename InvOp>
 inline Reducer<T, Op, InvOp>& Reducer<T, Op, InvOp>::operator<<(
     typename butil::add_cr_non_integral<T>::type value) {
     // It's wait-free for most time
+    // 获得当前tls agent ， agent 用于代理当前线程的<<操作
     agent_type* agent = _combiner.get_or_create_tls_agent();
     if (__builtin_expect(!agent, 0)) {
         LOG(FATAL) << "Fail to create agent";
         return *this;
     }
+    // 执行OP修改
     agent->element.modify(_combiner.op(), value);
     return *this;
 }
