@@ -216,6 +216,7 @@ friend class GlobalValue<self_type>;
         ElementContainer<ElementTp> element;
     };
 
+    // 多线程内管理内存
     typedef detail::AgentGroup<Agent> AgentGroup;
 
     explicit AgentCombiner(const ResultTp result_identity = ResultTp(),
