@@ -205,6 +205,8 @@ private:
     // std::deque<AgentId>、std::vector<ThreadBlock *>
     static AgentId                              _s_agent_kinds;
     static std::deque<AgentId>                  *_s_free_ids;
+
+    // 
     // 各线程一个 thread_local C++11与__thread gcc 的区别
     static __thread std::vector<ThreadBlock *>  *_s_tls_blocks;
 };
@@ -219,6 +221,8 @@ template <typename Agent>
 AgentId AgentGroup<Agent>::_s_agent_kinds = 0;
 
 template <typename Agent>
+
+// 每个线程单独管理使用到的T的内存分配
 __thread std::vector<typename AgentGroup<Agent>::ThreadBlock *>
 *AgentGroup<Agent>::_s_tls_blocks = NULL;
 
