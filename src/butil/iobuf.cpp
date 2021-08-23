@@ -195,8 +195,10 @@ struct UserDataExtension {
 };
 
 struct IOBuf::Block {
+    // 引用数
     butil::atomic<int> nshared;
     uint16_t flags;
+    
     uint16_t abi_check;  // original cap, never be zero.
     uint32_t size;
     uint32_t cap;
