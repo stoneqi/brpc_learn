@@ -99,6 +99,7 @@ public:
     // Returns true on success, false if queue is full.
     bool push(const T& item) {
         if (_count < _cap) {
+            // 新建一个T， 通过count 计算元素初始化位置。
             new ((T*)_items + _mod(_start + _count, _cap)) T(item);
             ++_count;
             return true;
