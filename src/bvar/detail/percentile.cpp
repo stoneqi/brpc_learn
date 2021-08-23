@@ -107,6 +107,7 @@ Percentile::value_type Percentile::get_value() const {
     return _combiner->combine_agents();
 }
 
+// 添加耗时
 Percentile &Percentile::operator<<(int64_t latency) {
     agent_type* agent = _combiner->get_or_create_tls_agent();
     if (BAIDU_UNLIKELY(!agent)) {
