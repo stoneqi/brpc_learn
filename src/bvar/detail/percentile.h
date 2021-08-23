@@ -460,6 +460,9 @@ public:
     typedef ReducerSampler<Percentile, 
                            GlobalPercentileSamples,
                            AddPercentileSamples, VoidOp>    sampler_type;
+
+    // template <typename ResultTp, typename ElementTp, typename BinaryOp>
+    // 结果采样保存在GlobalPercentileSample，元素类型ThreadLocalPercentileSamples，操作AddPercentileSamples
     typedef AgentCombiner <GlobalPercentileSamples,
                            ThreadLocalPercentileSamples,
                            AddPercentileSamples>            combiner_type;
