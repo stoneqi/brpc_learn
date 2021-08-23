@@ -272,6 +272,8 @@ struct MaxTo {
 };
 class LatencyRecorderBase;
 }
+
+// 计算一个窗口的最大值
 template <typename T>
 class Maxer : public Reducer<T, detail::MaxTo<T> > {
 public:
