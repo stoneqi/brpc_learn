@@ -29,6 +29,7 @@ namespace bvar {
 namespace detail {
 
 class Percentile;
+// IntRecorder 为数据记录
 typedef Window<IntRecorder, SERIES_IN_SECOND> RecorderWindow;
 typedef Window<Maxer<int64_t>, SERIES_IN_SECOND> MaxWindow;
 typedef Window<Percentile, SERIES_IN_SECOND> PercentileWindow;
