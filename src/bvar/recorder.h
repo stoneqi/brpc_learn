@@ -77,6 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stat& s) {
 }
 
 // For calculating average of numbers.
+// 计算平均值
 // Example:
 //   IntRecorder latency;
 //   latency << 1 << 3 << 5;
