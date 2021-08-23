@@ -444,6 +444,7 @@ typedef PercentileSamples<254> GlobalPercentileSamples;
 typedef PercentileSamples<30> ThreadLocalPercentileSamples;
 
 // A specialized reducer for finding the percentile of latencies.
+//  percentile of latencies 延时百分比
 // NOTE: DON'T use it directly, use LatencyRecorder instead.
 class Percentile {
 public:
