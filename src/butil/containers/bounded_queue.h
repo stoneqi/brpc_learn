@@ -68,6 +68,7 @@ public:
         DCHECK(_items);
     };
     
+    // 新增时实例化内存
     // Construct a queue with the given capacity.
     // The malloc() may fail silently, call initialized() to test validity
     // of the queue.
