@@ -58,6 +58,7 @@ class BoundedQueue {
 public:
     // You have to pass the memory for storing items at creation.
     // The queue contains at most memsize/sizeof(T) items.
+    // 自己传入内存
     BoundedQueue(void* mem, size_t memsize, StorageOwnership ownership)
         : _count(0)
         , _cap(memsize / sizeof(T))
