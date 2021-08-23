@@ -34,7 +34,7 @@ struct Stat {
     Stat() : sum(0), num(0) {};
     Stat(int64_t sum2, int64_t num2) : sum(sum2), num(num2) {}
     int64_t sum; // 总和
-    int64_t num;  // pin
+    int64_t num;  // 频次
         
     int64_t get_average_int() const {
         //num can be changed by sampling thread, use tmp_num
