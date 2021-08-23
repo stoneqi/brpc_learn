@@ -112,6 +112,7 @@ public:
         }
     };
     
+    // Stat 状态
     typedef detail::AgentCombiner<Stat, uint64_t, AddToStat> combiner_type;
     typedef combiner_type::Agent agent_type;
 
